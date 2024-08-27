@@ -5,36 +5,38 @@ const cloudinary = require("cloudinary").v2;
 
 // Create Prouct
 const createProduct = asyncHandler(async (req, res) => {
-  const { name, sku, category, quantity, price, description } = req.body;
+  // description
+  const { name, sku, category, quantity, price,paymentMethod,chequeDate } = req.body;
 
   //   Validation
-  if (!name || !category || !quantity || !price || !description) {
+  console.log("Body", req.body);
+  if (!name || !category || !quantity || !price ||!paymentMethod) {
     res.status(400);
     throw new Error("Please fill in all fields");
   }
 
   // Handle Image upload
   let fileData = {};
-  if (req.file) {
-    // Save image to cloudinary
-    let uploadedFile;
-    try {
-      uploadedFile = await cloudinary.uploader.upload(req.file.path, {
-        folder: "Pinvent App",
-        resource_type: "image",
-      });
-    } catch (error) {
-      res.status(500);
-      throw new Error("Image could not be uploaded");
-    }
+  // if (req.file) {
+  //   // Save image to cloudinary
+  //   let uploadedFile;
+  //   try {
+  //     uploadedFile = await cloudinary.uploader.upload(req.file.path, {
+  //       folder: "Pinvent App",
+  //       resource_type: "image",
+  //     });
+  //   } catch (error) {
+  //     res.status(500);
+  //     throw new Error("Image could not be uploaded");
+  //   }
 
-    fileData = {
-      fileName: req.file.originalname,
-      filePath: uploadedFile.secure_url,
-      fileType: req.file.mimetype,
-      fileSize: fileSizeFormatter(req.file.size, 2),
-    };
-  }
+  //   fileData = {
+  //     fileName: req.file.originalname,
+  //     filePath: uploadedFile.secure_url,
+  //     fileType: req.file.mimetype,
+  //     fileSize: fileSizeFormatter(req.file.size, 2),
+  //   };
+  // }
 
   // Create Product
   const product = await Product.create({
@@ -44,9 +46,11 @@ const createProduct = asyncHandler(async (req, res) => {
     category,
     quantity,
     price,
-    description,
-    image: fileData,
+    paymentMethod,
+    chequeDate
+    // image: fileData,
   });
+
 
   res.status(201).json(product);
 });
@@ -92,7 +96,7 @@ const deleteProduct = asyncHandler(async (req, res) => {
 
 // Update Product
 const updateProduct = asyncHandler(async (req, res) => {
-  const { name, category, quantity, price, description } = req.body;
+  const { name, category, quantity, price, description,paymentMethod ,chequeDate} = req.body;
   const { id } = req.params;
 
   const product = await Product.findById(id);
@@ -109,27 +113,27 @@ const updateProduct = asyncHandler(async (req, res) => {
   }
 
   // Handle Image upload
-  let fileData = {};
-  if (req.file) {
-    // Save image to cloudinary
-    let uploadedFile;
-    try {
-      uploadedFile = await cloudinary.uploader.upload(req.file.path, {
-        folder: "Pinvent App",
-        resource_type: "image",
-      });
-    } catch (error) {
-      res.status(500);
-      throw new Error("Image could not be uploaded");
-    }
+  // let fileData = {};
+  // if (req.file) {
+  //   // Save image to cloudinary
+  //   let uploadedFile;
+  //   try {
+  //     uploadedFile = await cloudinary.uploader.upload(req.file.path, {
+  //       folder: "Pinvent App",
+  //       resource_type: "image",
+  //     });
+  //   } catch (error) {
+  //     res.status(500);
+  //     throw new Error("Image could not be uploaded");
+  //   }
 
-    fileData = {
-      fileName: req.file.originalname,
-      filePath: uploadedFile.secure_url,
-      fileType: req.file.mimetype,
-      fileSize: fileSizeFormatter(req.file.size, 2),
-    };
-  }
+  //   fileData = {
+  //     fileName: req.file.originalname,
+  //     filePath: uploadedFile.secure_url,
+  //     fileType: req.file.mimetype,
+  //     fileSize: fileSizeFormatter(req.file.size, 2),
+  //   };
+  // }
 
   // Update Product
   const updatedProduct = await Product.findByIdAndUpdate(
@@ -140,7 +144,9 @@ const updateProduct = asyncHandler(async (req, res) => {
       quantity,
       price,
       description,
-      image: Object.keys(fileData).length === 0 ? product?.image : fileData,
+      paymentMethod ,
+      chequeDate
+      // image: Object.keys(fileData).length === 0 ? product?.image : fileData,
     },
     {
       new: true,

@@ -33,15 +33,21 @@ const productSchema = mongoose.Schema(
       required: [true, "Please add a price"],
       trim: true,
     },
-    description: {
+    paymentMethod:{
       type: String,
-      required: [true, "Please add a description"],
+      required: [true, "Please add a Payment Method"],
       trim: true,
     },
-    image: {
-      type: Object,
-      default: {},
+    
+    chequeDate: {
+      type: String,
+      required: false,
+      trim: true,
     },
+    // image: {
+    //   type: Object,
+    //   default: {},
+    // },
   },
   {
     timestamps: true,
