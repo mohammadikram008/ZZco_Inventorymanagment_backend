@@ -10,8 +10,8 @@ const {
 } = require("../controllers/productController");
 const { upload } = require("../utils/fileUpload");
 
-// router.post("/", protect, upload.single("image"), createProduct);
-router.post("/", protect, createProduct);
+// Use the upload middleware for image handling in both create and update routes
+router.post("/", protect, upload.single("image"), createProduct);
 router.patch("/:id", protect, upload.single("image"), updateProduct);
 router.get("/", protect, getProducts);
 router.get("/:id", protect, getProduct);

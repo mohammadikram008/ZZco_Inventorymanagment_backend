@@ -8,6 +8,7 @@ const productRoute = require("./routes/productRoute");
 const contactRoute = require("./routes/contactRoute");
 const customerRoute = require("./routes/customerRoute");
 const ManagerRoute = require("./routes/managerRoute");
+const bankRoutes = require("./routes/bankRoutes"); // Import bank routes
 const SalesRoute = require("./routes/saleRoute");
 const errorHandler = require("./middleWare/errorMiddleware");
 const cookieParser = require("cookie-parser");
@@ -22,7 +23,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://pinvent-app.vercel.app"],
+    origin: ["http://localhost:3001", "https://pinvent-app.vercel.app"],
     credentials: true,
   })
 );
@@ -35,6 +36,7 @@ app.use("/api/products", productRoute);
 app.use("/api/contactus", contactRoute);
 app.use("/api/customers", customerRoute);
 app.use("/api/manager", ManagerRoute);
+app.use("/api/banks", bankRoutes);
 app.use("/api/sales", SalesRoute);
 
 // Routes

@@ -4,39 +4,39 @@ const { fileSizeFormatter } = require("../utils/fileUpload");
 const cloudinary = require("cloudinary").v2;
 
 // Create Prouct
+ 
 const createProduct = asyncHandler(async (req, res) => {
-  // description
-  const { name, sku, category, quantity, price,paymentMethod,chequeDate } = req.body;
+  // Get product details from request body
+  const { name, sku, category, quantity, price, paymentMethod, chequeDate } = req.body;
 
-  //   Validation
-  console.log("Body", req.body);
-  if (!name || !category || !quantity || !price ||!paymentMethod) {
+  // Validation
+  if (!name || !category || !quantity || !price || !paymentMethod) {
     res.status(400);
     throw new Error("Please fill in all fields");
   }
 
   // Handle Image upload
   let fileData = {};
-  // if (req.file) {
-  //   // Save image to cloudinary
-  //   let uploadedFile;
-  //   try {
-  //     uploadedFile = await cloudinary.uploader.upload(req.file.path, {
-  //       folder: "Pinvent App",
-  //       resource_type: "image",
-  //     });
-  //   } catch (error) {
-  //     res.status(500);
-  //     throw new Error("Image could not be uploaded");
-  //   }
+  if (req.file) {
+    // Save image to cloudinary
+    let uploadedFile;
+    try {
+      uploadedFile = await cloudinary.uploader.upload(req.file.path, {
+        folder: "Pinvent App",
+        resource_type: "image",
+      });
+    } catch (error) {
+      res.status(500);
+      throw new Error("Image could not be uploaded");
+    }
 
-  //   fileData = {
-  //     fileName: req.file.originalname,
-  //     filePath: uploadedFile.secure_url,
-  //     fileType: req.file.mimetype,
-  //     fileSize: fileSizeFormatter(req.file.size, 2),
-  //   };
-  // }
+    fileData = {
+      fileName: req.file.originalname,
+      filePath: uploadedFile.secure_url,
+      fileType: req.file.mimetype,
+      fileSize: fileSizeFormatter(req.file.size, 2),
+    };
+  }
 
   // Create Product
   const product = await Product.create({
@@ -47,8 +47,8 @@ const createProduct = asyncHandler(async (req, res) => {
     quantity,
     price,
     paymentMethod,
-    chequeDate
-    // image: fileData,
+    chequeDate,
+    image: fileData,
   });
 
 
@@ -96,16 +96,17 @@ const deleteProduct = asyncHandler(async (req, res) => {
 
 // Update Product
 const updateProduct = asyncHandler(async (req, res) => {
-  const { name, category, quantity, price, description,paymentMethod ,chequeDate} = req.body;
+  const { name, category, quantity, price, description, paymentMethod, chequeDate } = req.body;
   const { id } = req.params;
 
   const product = await Product.findById(id);
 
-  // if product doesnt exist
+  // if product doesn't exist
   if (!product) {
     res.status(404);
     throw new Error("Product not found");
   }
+
   // Match product to its user
   if (product.user.toString() !== req.user.id) {
     res.status(401);
@@ -113,27 +114,27 @@ const updateProduct = asyncHandler(async (req, res) => {
   }
 
   // Handle Image upload
-  // let fileData = {};
-  // if (req.file) {
-  //   // Save image to cloudinary
-  //   let uploadedFile;
-  //   try {
-  //     uploadedFile = await cloudinary.uploader.upload(req.file.path, {
-  //       folder: "Pinvent App",
-  //       resource_type: "image",
-  //     });
-  //   } catch (error) {
-  //     res.status(500);
-  //     throw new Error("Image could not be uploaded");
-  //   }
+  let fileData = {};
+  if (req.file) {
+    // Save image to cloudinary
+    let uploadedFile;
+    try {
+      uploadedFile = await cloudinary.uploader.upload(req.file.path, {
+        folder: "Pinvent App",
+        resource_type: "image",
+      });
+    } catch (error) {
+      res.status(500);
+      throw new Error("Image could not be uploaded");
+    }
 
-  //   fileData = {
-  //     fileName: req.file.originalname,
-  //     filePath: uploadedFile.secure_url,
-  //     fileType: req.file.mimetype,
-  //     fileSize: fileSizeFormatter(req.file.size, 2),
-  //   };
-  // }
+    fileData = {
+      fileName: req.file.originalname,
+      filePath: uploadedFile.secure_url,
+      fileType: req.file.mimetype,
+      fileSize: fileSizeFormatter(req.file.size, 2),
+    };
+  }
 
   // Update Product
   const updatedProduct = await Product.findByIdAndUpdate(
@@ -144,9 +145,9 @@ const updateProduct = asyncHandler(async (req, res) => {
       quantity,
       price,
       description,
-      paymentMethod ,
-      chequeDate
-      // image: Object.keys(fileData).length === 0 ? product?.image : fileData,
+      paymentMethod,
+      chequeDate,
+      image: Object.keys(fileData).length === 0 ? product.image : fileData,
     },
     {
       new: true,
@@ -156,6 +157,7 @@ const updateProduct = asyncHandler(async (req, res) => {
 
   res.status(200).json(updatedProduct);
 });
+
 
 module.exports = {
   createProduct,
