@@ -11,6 +11,7 @@ const customerRoute = require("./routes/customerRoute");
 const managerRoute = require("./routes/managerRoute");
 const bankRoutes = require("./routes/bankRoutes");
 const salesRoute = require("./routes/saleRoute");
+const expenseRoutes = require("./routes/addExpensesRoutes"); // Import expense routes
 const errorHandler = require("./middleWare/errorMiddleware");
 
 const app = express();
@@ -35,6 +36,7 @@ app.use("/api/customers", customerRoute);
 app.use("/api/manager", managerRoute);
 app.use("/api/banks", bankRoutes);
 app.use("/api/sales", salesRoute);
+app.use("/api/expenses", expenseRoutes); // Use the expense routes
 
 // Home Route
 app.get("/", (req, res) => {
