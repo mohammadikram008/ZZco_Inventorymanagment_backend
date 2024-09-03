@@ -4,9 +4,13 @@ const { fileSizeFormatter } = require("../utils/fileUpload");
 const cloudinary = require("cloudinary").v2;
 
 // Create Prouct
+cloudinary.config({ 
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+  api_key: process.env.CLOUDINARY_API_KEY, 
+  api_secret: process.env.CLOUDINARY_API_SECRET 
+});
  
 const createProduct = asyncHandler(async (req, res) => {
-  // Get product details from request body
   const { name, sku, category, quantity, price, paymentMethod, chequeDate } = req.body;
 
   // Validation
@@ -18,23 +22,11 @@ const createProduct = asyncHandler(async (req, res) => {
   // Handle Image upload
   let fileData = {};
   if (req.file) {
-    // Save image to cloudinary
-    let uploadedFile;
-    try {
-      uploadedFile = await cloudinary.uploader.upload(req.file.path, {
-        folder: "Pinvent App",
-        resource_type: "image",
-      });
-    } catch (error) {
-      res.status(500);
-      throw new Error("Image could not be uploaded");
-    }
-
     fileData = {
-      fileName: req.file.originalname,
-      filePath: uploadedFile.secure_url,
+      fileName: req.file.filename,
+      filePath: req.file.path.replace(/\\/g, "/"), // Use forward slashes for web compatibility
       fileType: req.file.mimetype,
-      fileSize: fileSizeFormatter(req.file.size, 2),
+      fileSize: req.file.size,
     };
   }
 
@@ -51,9 +43,10 @@ const createProduct = asyncHandler(async (req, res) => {
     image: fileData,
   });
 
-
   res.status(201).json(product);
 });
+
+
 
 // Get all Products
 const getProducts = asyncHandler(async (req, res) => {

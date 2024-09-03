@@ -44,10 +44,10 @@ const productSchema = mongoose.Schema(
       required: false,
       trim: true,
     },
-    // image: {
-    //   type: Object,
-    //   default: {},
-    // },
+    image: {
+      type: Object,
+      default: {},
+    },
   },
   {
     timestamps: true,
