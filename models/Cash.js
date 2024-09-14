@@ -1,23 +1,13 @@
-// models/Bank.js
+const mongoose = require('mongoose');
 
-const mongoose = require("mongoose");
+const cashSchema = new mongoose.Schema({
+  balance: { type: Number, required: true },
+  totalBalance: { type: Number, required: true },
+  type: { type: String, enum: ['add', 'deduct'], required: true },
+}, {
+  timestamps: true,
+});
 
-const CashSchema = new mongoose.Schema(
-  {
-    date: {
-      type: Date,
-     
-    },
-    amount: {
-      type: Number,
-      required: [true, "Please add an amount"],
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
+const Cash = mongoose.model('Cash', cashSchema);
 
-// Ensure that you are exporting the Bank model correctly
-const Cash = mongoose.model("Cash", CashSchema);
 module.exports = Cash;

@@ -14,7 +14,7 @@ const productSchema = mongoose.Schema(
     },
     sku: {
       type: String,
-      required: true,
+      // required: true,
       default: "SKU",
       trim: true,
     },
@@ -33,22 +33,40 @@ const productSchema = mongoose.Schema(
       required: [true, "Please add a price"],
       trim: true,
     },
-    paymentMethod:{
-      type: String,
-      required: [true, "Please add a Payment Method"],
-      trim: true,
-    },
-    
-    chequeDate: {
-      type: String,
-      required: false,
-      trim: true,
-    },
+    // description: {
+    //   type: String,
+    //   required: [true, "Please add a description"],
+    //   trim: true,
+    // },
     image: {
       type: Object,
       default: {},
     },
+    paymentMethod: {
+      type: String,
+      required: [true, "Please select a payment method"],
+      enum: ["cash", "cheque", "online"],
+    },
+    chequeDate: {
+      type: Date,
+      required: function() { return this.paymentMethod === "cheque"; },
+    },
+    bank: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Bank",
+      required: function() { return this.paymentMethod === "online"; },
+    },
+    warehouse: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Warehouse",
+      required: [true, "Please select a warehouse"],
+    },
+    status: {
+      type: Boolean,
+      default: false,
+    },
   },
+  
   {
     timestamps: true,
   }

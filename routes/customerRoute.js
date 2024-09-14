@@ -18,13 +18,13 @@ const {
 } = require("../controllers/customerController");
 const protect = require("../middleWare/authMiddleware");
 
-router.post("/customerResgister", registerCustomer);
-router.get("/allcustomer", GetAllCustomer);
+router.post("/customerResgister",protect, registerCustomer);
+router.get("/allcustomer",protect, GetAllCustomer);
 
-router.post("/add-customer-balance/:id", addBalance);
-router.post("/minus-customer-balance/:id", minusBalance);
-router.delete("/Delete-customers/:id", deleteUser);
-router.get("/transactionHistory/:id", getTransactionHistory);
+router.post("/add-customer-balance/:id",protect, addBalance);
+router.post("/minus-customer-balance/:id",protect, minusBalance);
+router.delete("/Delete-customers/:id",protect, deleteUser);
+router.get("/transactionHistory/:id",protect, getTransactionHistory);
 
 // router.post("/login", loginUser);
 // router.get("/logout", logout);

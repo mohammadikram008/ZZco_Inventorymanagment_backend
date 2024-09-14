@@ -1,23 +1,13 @@
-// models/Bank.js
+const mongoose = require('mongoose');
 
-const mongoose = require("mongoose");
+const bankSchema = new mongoose.Schema({
+  bankName: { type: String, required: true },
+  // accountNumber: { type: String, required: true },
+  balance: { type: Number, required: true, default: 0 },
+}, {
+  timestamps: true,
+});
 
-const BankSchema = new mongoose.Schema(
-  {
-    bankName: {
-      type: String,
-      required: [true, "Please add a bank name"],
-    },
-    amount: {
-      type: Number,
-      required: [true, "Please add an amount"],
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
+const Bank = mongoose.model('Bank', bankSchema);
 
-// Ensure that you are exporting the Bank model correctly
-const Bank = mongoose.model("Bank", BankSchema);
 module.exports = Bank;

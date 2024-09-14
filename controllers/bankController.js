@@ -16,7 +16,7 @@ const addBank = asyncHandler(async (req, res) => {
   // Create a new bank entry
   const bank = await Bank.create({
     bankName,
-    amount,
+    balance:amount,
   });
 
   if (bank) {

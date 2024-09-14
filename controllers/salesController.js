@@ -1,5 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Sale = require("../models/Sale");
+const Bank = require('../models/Bank');
+const Cash = require('../models/Cash');
 const { fileSizeFormatter } = require("../utils/fileUpload");
 const cloudinary = require("cloudinary").v2;
 
@@ -13,7 +15,7 @@ cloudinary.config({
 // Add Sale
 const AddSale = asyncHandler(async (req, res) => {
     // Extract sale details from request body
-    const { productID, customerID, stockSold, saleDate, totalSaleAmount, paymentMethod, chequeDate } = req.body;
+    const { productID, customerID, stockSold, saleDate, totalSaleAmount, paymentMethod, chequeDate, bankID, warehouseID, status } = req.body;
 
     // Validation
     if (!productID || !customerID || !stockSold || !saleDate || !totalSaleAmount || !paymentMethod) {
@@ -24,23 +26,12 @@ const AddSale = asyncHandler(async (req, res) => {
     // Handle Image upload
     let fileData = {};
     if (req.file) {
-        // Save image to Cloudinary
-        let uploadedFile;
-        try {
-            uploadedFile = await cloudinary.uploader.upload(req.file.path, {
-                folder: "Sales App",
-                resource_type: "image",
-            });
-            fileData = {
-                fileName: req.file.originalname,
-                filePath: uploadedFile.secure_url,
-                fileType: req.file.mimetype,
-                fileSize: fileSizeFormatter(req.file.size, 2),
-            };
-        } catch (error) {
-            res.status(500);
-            throw new Error("Image could not be uploaded");
-        }
+        fileData = {
+            fileName: req.file.filename,
+            filePath: req.file.path.replace(/\\/g, "/"), // Use forward slashes for web compatibility
+            fileType: req.file.mimetype,
+            fileSize: req.file.size,
+        };
     }
 
     // Create Sale
@@ -53,9 +44,37 @@ const AddSale = asyncHandler(async (req, res) => {
             totalSaleAmount,
             paymentMethod,
             chequeDate,
-            image: fileData, // Save the image data
+            bankID,
+            warehouseID,
+            image: fileData,
+            status
         });
         await sale.save();
+        // const totalAmount = stockSold * totalSaleAmount;
+
+        if (paymentMethod === 'online') {
+            if (!bankID) {
+                throw new Error('Bank ID is required for online payments');
+            }
+            const bank = await Bank.findById(bankID);
+            if (!bank) {
+                throw new Error('Bank not found');
+            }
+            bank.balance += parseFloat(totalSaleAmount);
+            await bank.save();
+        } else if (paymentMethod === 'cash') {
+            const latestCash = await Cash.findOne().sort({ createdAt: -1 });
+            if (!latestCash) {
+                throw new Error('Cash account not found');
+            }
+            const newTotalBalance = latestCash.totalBalance + parseFloat(totalSaleAmount);
+            console.log(newTotalBalance);
+            await Cash.create({
+                balance: parseFloat(totalSaleAmount),
+                totalBalance: newTotalBalance,
+                type: 'add'
+            });
+        }
         res.status(201).json({ message: 'Sale added successfully!', sale });
     } catch (error) {
         console.error('Error adding sale:', error);

@@ -5,274 +5,276 @@ const bcrypt = require("bcryptjs");
 const Token = require("../models/tokenModel");
 const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
+const Bank = require("../models/Bank");
+const Cash = require("../models/Cash"); // Assume you have a Cash model
 
 // Generate Token
 const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 };
 
 // Register Customer
 const registerCustomer = asyncHandler(async (req, res) => {
-    const { username, email, password ,phone} = req.body;
-console.log("body",req.body);
+  const { username, email, password, phone } = req.body;
+  console.log("body", req.body);
 
 
-    // Validation
-    if (!username || !email || !password) {
-        res.status(400);
-        throw new Error("Please fill in all required fields");
-    }
-    if (password.length < 6) {
-        res.status(400);
-        throw new Error("Password must be up to 6 characters");
-    }
+  // Validation
+  if (!username || !email || !password) {
+    res.status(400);
+    throw new Error("Please fill in all required fields");
+  }
+  if (password.length < 6) {
+    res.status(400);
+    throw new Error("Password must be up to 6 characters");
+  }
 
-    // Check if user email already exists
-    const userExists = await CustomerUser.findOne({ email });
+  // Check if user email already exists
+  const userExists = await CustomerUser.findOne({ email });
 
-    if (userExists) {
-        res.status(400);
-        throw new Error("Email has already been registered");
-    }
+  if (userExists) {
+    res.status(400);
+    throw new Error("Email has already been registered");
+  }
 
-    // Create new user
-    const customer = await CustomerUser.create({
-        username,
-        email,
-        password,
-        phone
+  // Create new user
+  const customer = await CustomerUser.create({
+    username,
+    email,
+    password,
+    phone
+  });
+
+  //   Generate Token
+  const token = generateToken(customer._id);
+
+  // Send HTTP-only cookie
+  //   res.cookie("token", token, {
+  //     path: "/",
+  //     httpOnly: true,
+  //     expires: new Date(Date.now() + 1000 * 86400), // 1 day
+  //     sameSite: "none",
+  //     secure: true,
+  //   });
+
+  if (user) {
+    const { _id, name, email, phone, } = customer;
+    res.status(201).json({
+      _id,
+      username,
+      email,
+      phone,
+      token,
     });
-
-    //   Generate Token
-    const token = generateToken(customer._id);
-
-    // Send HTTP-only cookie
-    //   res.cookie("token", token, {
-    //     path: "/",
-    //     httpOnly: true,
-    //     expires: new Date(Date.now() + 1000 * 86400), // 1 day
-    //     sameSite: "none",
-    //     secure: true,
-    //   });
-
-    if (user) {
-        const { _id, name, email, phone, } = customer;
-        res.status(201).json({
-            _id,
-            username,
-            email,
-            phone,
-            token,
-        });
-    } else {
-        res.status(400);
-        throw new Error("Invalid Cutomer data");
-    }
+  } else {
+    res.status(400);
+    throw new Error("Invalid Cutomer data");
+  }
 });
 
 // Get all Cutomser
 const GetAllCustomer = asyncHandler(async (req, res) => {
-    try {
-        const customers = await CustomerUser.find(); 
-        console.log("customers",customers);
-        
-        res.status(200).json(customers);
-      } catch (error) {
-        res.status(500).json({ message: 'Error fetching customers', error });
-      }
+  try {
+    const customers = await CustomerUser.find();
+    console.log("customers", customers);
+
+    res.status(200).json(customers);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching customers', error });
+  }
 })
 
 
 // Login User
 const loginUser = asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    // Validate Request
-    if (!email || !password) {
-        res.status(400);
-        throw new Error("Please add email and password");
-    }
+  // Validate Request
+  if (!email || !password) {
+    res.status(400);
+    throw new Error("Please add email and password");
+  }
 
-    // Check if user exists
-    const user = await User.findOne({ email });
+  // Check if user exists
+  const user = await User.findOne({ email });
 
-    if (!user) {
-        res.status(400);
-        throw new Error("User not found, please signup");
-    }
+  if (!user) {
+    res.status(400);
+    throw new Error("User not found, please signup");
+  }
 
-    // User exists, check if password is correct
-    const passwordIsCorrect = await bcrypt.compare(password, user.password);
+  // User exists, check if password is correct
+  const passwordIsCorrect = await bcrypt.compare(password, user.password);
 
-    //   Generate Token
-    const token = generateToken(user._id);
+  //   Generate Token
+  const token = generateToken(user._id);
 
-    if (passwordIsCorrect) {
-        // Send HTTP-only cookie
-        res.cookie("token", token, {
-            path: "/",
-            httpOnly: true,
-            expires: new Date(Date.now() + 1000 * 86400), // 1 day
-            sameSite: "none",
-            secure: true,
-        });
-    }
-    if (user && passwordIsCorrect) {
-        const { _id, name, email, photo, phone, bio } = user;
-        res.status(200).json({
-            _id,
-            name,
-            email,
-            photo,
-            phone,
-            bio,
-            token,
-        });
-    } else {
-        res.status(400);
-        throw new Error("Invalid email or password");
-    }
+  if (passwordIsCorrect) {
+    // Send HTTP-only cookie
+    res.cookie("token", token, {
+      path: "/",
+      httpOnly: true,
+      expires: new Date(Date.now() + 1000 * 86400), // 1 day
+      sameSite: "none",
+      secure: true,
+    });
+  }
+  if (user && passwordIsCorrect) {
+    const { _id, name, email, photo, phone, bio } = user;
+    res.status(200).json({
+      _id,
+      name,
+      email,
+      photo,
+      phone,
+      bio,
+      token,
+    });
+  } else {
+    res.status(400);
+    throw new Error("Invalid email or password");
+  }
 });
 
 // Logout User
 const logout = asyncHandler(async (req, res) => {
-    res.cookie("token", "", {
-        path: "/",
-        httpOnly: true,
-        expires: new Date(0),
-        sameSite: "none",
-        secure: true,
-    });
-    return res.status(200).json({ message: "Successfully Logged Out" });
+  res.cookie("token", "", {
+    path: "/",
+    httpOnly: true,
+    expires: new Date(0),
+    sameSite: "none",
+    secure: true,
+  });
+  return res.status(200).json({ message: "Successfully Logged Out" });
 });
 
 // Get User Data
 const getUser = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id);
 
-    if (user) {
-        const { _id, name, email, photo, phone, bio } = user;
-        res.status(200).json({
-            _id,
-            name,
-            email,
-            photo,
-            phone,
-            bio,
-        });
-    } else {
-        res.status(400);
-        throw new Error("User Not Found");
-    }
+  if (user) {
+    const { _id, name, email, photo, phone, bio } = user;
+    res.status(200).json({
+      _id,
+      name,
+      email,
+      photo,
+      phone,
+      bio,
+    });
+  } else {
+    res.status(400);
+    throw new Error("User Not Found");
+  }
 });
 
 // Get Login Status
 const loginStatus = asyncHandler(async (req, res) => {
-    const token = req.cookies.token;
-    if (!token) {
-        return res.json(false);
-    }
-    // Verify Token
-    const verified = jwt.verify(token, process.env.JWT_SECRET);
-    if (verified) {
-        return res.json(true);
-    }
+  const token = req.cookies.token;
+  if (!token) {
     return res.json(false);
+  }
+  // Verify Token
+  const verified = jwt.verify(token, process.env.JWT_SECRET);
+  if (verified) {
+    return res.json(true);
+  }
+  return res.json(false);
 });
 
 // Update User
 const updateUser = asyncHandler(async (req, res) => {
-    const user = await CustomerUser.findById(req.user._id);
+  const user = await CustomerUser.findById(req.user._id);
 
-    if (user) {
-        const { name, email, photo, phone, bio } = user;
-        user.email = email;
-        user.name = req.body.name || name;
-        user.phone = req.body.phone || phone;
-        user.bio = req.body.bio || bio;
-        user.photo = req.body.photo || photo;
+  if (user) {
+    const { name, email, photo, phone, bio } = user;
+    user.email = email;
+    user.name = req.body.name || name;
+    user.phone = req.body.phone || phone;
+    user.bio = req.body.bio || bio;
+    user.photo = req.body.photo || photo;
 
-        const updatedUser = await user.save();
-        res.status(200).json({
-            _id: updatedUser._id,
-            name: updatedUser.name,
-            email: updatedUser.email,
-            photo: updatedUser.photo,
-            phone: updatedUser.phone,
-            bio: updatedUser.bio,
-        });
-    } else {
-        res.status(404);
-        throw new Error("User not found");
-    }
+    const updatedUser = await user.save();
+    res.status(200).json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      photo: updatedUser.photo,
+      phone: updatedUser.phone,
+      bio: updatedUser.bio,
+    });
+  } else {
+    res.status(404);
+    throw new Error("User not found");
+  }
 });
 
 const changePassword = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user._id);
-    const { oldPassword, password } = req.body;
+  const user = await User.findById(req.user._id);
+  const { oldPassword, password } = req.body;
 
-    if (!user) {
-        res.status(400);
-        throw new Error("User not found, please signup");
-    }
-    //Validate
-    if (!oldPassword || !password) {
-        res.status(400);
-        throw new Error("Please add old and new password");
-    }
+  if (!user) {
+    res.status(400);
+    throw new Error("User not found, please signup");
+  }
+  //Validate
+  if (!oldPassword || !password) {
+    res.status(400);
+    throw new Error("Please add old and new password");
+  }
 
-    // check if old password matches password in DB
-    const passwordIsCorrect = await bcrypt.compare(oldPassword, user.password);
+  // check if old password matches password in DB
+  const passwordIsCorrect = await bcrypt.compare(oldPassword, user.password);
 
-    // Save new password
-    if (user && passwordIsCorrect) {
-        user.password = password;
-        await user.save();
-        res.status(200).send("Password change successful");
-    } else {
-        res.status(400);
-        throw new Error("Old password is incorrect");
-    }
+  // Save new password
+  if (user && passwordIsCorrect) {
+    user.password = password;
+    await user.save();
+    res.status(200).send("Password change successful");
+  } else {
+    res.status(400);
+    throw new Error("Old password is incorrect");
+  }
 });
 
 const forgotPassword = asyncHandler(async (req, res) => {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
+  const { email } = req.body;
+  const user = await User.findOne({ email });
 
-    if (!user) {
-        res.status(404);
-        throw new Error("User does not exist");
-    }
+  if (!user) {
+    res.status(404);
+    throw new Error("User does not exist");
+  }
 
-    // Delete token if it exists in DB
-    let token = await Token.findOne({ userId: user._id });
-    if (token) {
-        await token.deleteOne();
-    }
+  // Delete token if it exists in DB
+  let token = await Token.findOne({ userId: user._id });
+  if (token) {
+    await token.deleteOne();
+  }
 
-    // Create Reste Token
-    let resetToken = crypto.randomBytes(32).toString("hex") + user._id;
-    console.log(resetToken);
+  // Create Reste Token
+  let resetToken = crypto.randomBytes(32).toString("hex") + user._id;
+  console.log(resetToken);
 
-    // Hash token before saving to DB
-    const hashedToken = crypto
-        .createHash("sha256")
-        .update(resetToken)
-        .digest("hex");
+  // Hash token before saving to DB
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
 
-    // Save Token to DB
-    await new Token({
-        userId: user._id,
-        token: hashedToken,
-        createdAt: Date.now(),
-        expiresAt: Date.now() + 30 * (60 * 1000), // Thirty minutes
-    }).save();
+  // Save Token to DB
+  await new Token({
+    userId: user._id,
+    token: hashedToken,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 30 * (60 * 1000), // Thirty minutes
+  }).save();
 
-    // Construct Reset Url
-    const resetUrl = `${process.env.FRONTEND_URL}/resetpassword/${resetToken}`;
+  // Construct Reset Url
+  const resetUrl = `${process.env.FRONTEND_URL}/resetpassword/${resetToken}`;
 
-    // Reset Email
-    const message = `
+  // Reset Email
+  const message = `
       <h2>Hello ${user.name}</h2>
       <p>Please use the url below to reset your password</p>  
       <p>This reset link is valid for only 30minutes.</p>
@@ -282,169 +284,259 @@ const forgotPassword = asyncHandler(async (req, res) => {
       <p>Regards...</p>
       <p>Pinvent Team</p>
     `;
-    const subject = "Password Reset Request";
-    const send_to = user.email;
-    const sent_from = process.env.EMAIL_USER;
+  const subject = "Password Reset Request";
+  const send_to = user.email;
+  const sent_from = process.env.EMAIL_USER;
 
-    try {
-        await sendEmail(subject, message, send_to, sent_from);
-        res.status(200).json({ success: true, message: "Reset Email Sent" });
-    } catch (error) {
-        res.status(500);
-        throw new Error("Email not sent, please try again");
-    }
+  try {
+    await sendEmail(subject, message, send_to, sent_from);
+    res.status(200).json({ success: true, message: "Reset Email Sent" });
+  } catch (error) {
+    res.status(500);
+    throw new Error("Email not sent, please try again");
+  }
 });
 
 // Reset Password
 const resetPassword = asyncHandler(async (req, res) => {
-    const { password } = req.body;
-    const { resetToken } = req.params;
+  const { password } = req.body;
+  const { resetToken } = req.params;
 
-    // Hash token, then compare to Token in DB
-    const hashedToken = crypto
-        .createHash("sha256")
-        .update(resetToken)
-        .digest("hex");
+  // Hash token, then compare to Token in DB
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
 
-    // fIND tOKEN in DB
-    const userToken = await Token.findOne({
-        token: hashedToken,
-        expiresAt: { $gt: Date.now() },
-    });
+  // fIND tOKEN in DB
+  const userToken = await Token.findOne({
+    token: hashedToken,
+    expiresAt: { $gt: Date.now() },
+  });
 
-    if (!userToken) {
-        res.status(404);
-        throw new Error("Invalid or Expired Token");
-    }
+  if (!userToken) {
+    res.status(404);
+    throw new Error("Invalid or Expired Token");
+  }
 
-    // Find user
-    const user = await User.findOne({ _id: userToken.userId });
-    user.password = password;
-    await user.save();
-    res.status(200).json({
-        message: "Password Reset Successful, Please Login",
-    });
+  // Find user
+  const user = await User.findOne({ _id: userToken.userId });
+  user.password = password;
+  await user.save();
+  res.status(200).json({
+    message: "Password Reset Successful, Please Login",
+  });
 });
 
 //Add User Blance
 const addBalance = asyncHandler(async (req, res) => {
-    try {
-    const { id } = req.params;
-    const { amount, paymentMethod, chequeDate } = req.body;
-
+  const { id } = req.params;
+  // Check if the data is in req.payload instead of req.body
+  const { amount, paymentMethod, chequeDate, description, bankId } =req.body;
+  console.log("req.body",req.body)
+  console.log("amount",amount);
+  if (!amount || !paymentMethod) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
   
-      const customer = await CustomerUser.findById(id);
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
-      }
+  const customer = await CustomerUser.findById(id);
+  if (!customer) {
+    return res.status(404).json({ message: 'Customer not found' });
+  }
   
-      const transaction = {
-        amount: parseFloat(amount),
-        paymentMethod: paymentMethod,
-        chequeDate: chequeDate,
-        date: new Date(),
-        type: amount > 0 ? 'credit' : 'debit', // Assuming debit for negative amounts
+  try {
+    let fileData = {};
+    if (req.file) {
+      fileData = {
+        fileName: req.file.filename,
+        filePath: req.file.path.replace(/\\/g, "/"),
+        fileType: req.file.mimetype,
+        fileSize: req.file.size,
       };
-      customer.balance += transaction.amount;
+    }
+
+    // Ensure amount is parsed correctly
+    // const parsedAmount = parseFloat(amount);
+    // if (isNaN(parsedAmount)) {
+    //   return res.status(400).json({ message: 'Invalid amount', receivedAmount: amount });
+    // }
+
+    const transaction = {
+      amount: amount,
+      paymentMethod,
+      description,
+      date: new Date(),
+      type: 'credit',
+      image: fileData,
+    };
+
+    if (paymentMethod === 'online') {
+      if (!bankId) {
+        return res.status(400).json({ message: 'Bank ID is required for online payments' });
+      }
+      const bank = await Bank.findById(bankId);
+      if (!bank) {
+        return res.status(404).json({ message: 'Bank not found' });
+      }
+      bank.balance += transaction.amount;
+      await bank.save();
+      transaction.bankName = bank.bankName;
+    } else if (paymentMethod === 'cash') {
+      const latestCash = await Cash.findOne().sort({ createdAt: -1 });
+      if (!latestCash) {
+        return res.status(404).json({ message: 'Cash account not found' });
+      }
+      const newTotalBalance = latestCash.totalBalance + transaction.amount;
+      await Cash.create({
+        balance: transaction.amount,
+        totalBalance: newTotalBalance,
+        type: 'add'
+      });
+    } else if (paymentMethod === 'cheque') {
+      if (!chequeDate) {
+        return res.status(400).json({ message: 'Cheque date is required for cheque payments' });
+      }
+      transaction.chequeDate = new Date(chequeDate);
+    } else {
+      return res.status(400).json({ message: 'Invalid payment method' });
+    }
+
+    customer.balance += transaction.amount;
     customer.transactionHistory.push(transaction);
 
-    if (paymentMethod === 'cheque') {
+    await customer.save();
+
+    return res.status(200).json({ 
+      message: 'Balance added successfully', 
+      customer,
+      addedAmount: parsedAmount,
+      newBalance: customer.balance
+    });
+  } catch (error) {
+    console.error('Error adding balance:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+///Subrate user balance
+const minusBalance = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { amount, paymentMethod, chequeDate, description, bankId } = req.body;
+
+  try {
+    const customer = await CustomerUser.findById(id);
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    // Check if the customer has sufficient balance
+    if (customer.balance < amount) {
+      return res.status(400).json({ message: 'Insufficient balance' });
+    }
+
+    // Record the transaction
+    const transaction = {
+      amount: -parseFloat(amount), // Negative amount for debit
+      paymentMethod,
+      chequeDate,
+      description,
+      date: new Date(),
+      type: 'debit', // Type for subtraction
+    };
+    switch (paymentMethod) {
+      case 'online':
+        if (!bankId) {
+          return res.status(400).json({ message: 'Bank ID is required for online payments' });
+        }
+        const bank = await Bank.findById(bankId);
+        if (!bank) {
+          return res.status(404).json({ message: 'Bank not found' });
+        }
+        bank.balance -= parseFloat(amount);
+        await bank.save();
+        transaction.bankName = bank.name;
+        break;
+
+      case 'cash':
+        const cashAccount = await Cash.findOne();
+        if (!cashAccount) {
+          return res.status(404).json({ message: 'Cash account not found' });
+        }
+        cashAccount.balance -= parseFloat(amount);
+        await cashAccount.save();
+        transaction.cashAccountId = cashAccount._id;
+        break;
+      case 'cheque':
+        if (!chequeDate) {
+          return res.status(400).json({ message: 'Cheque date is required for cheque payments' });
+        }
+        transaction.chequeDate = new Date(chequeDate);
+        break;
+
+      default:
+        return res.status(400).json({ message: 'Invalid payment method' });
+    }
+
+    customer.balance -= parseFloat(amount);
+    customer.transactionHistory.push(transaction);
+
+
+    if (paymentMethod === 'cheque' && chequeDate) {
       customer.chequeDate = new Date(chequeDate);
     }
 
     await customer.save();
-  
-      return res.status(200).json({ message: 'Balance updated successfully', customer });
-    } catch (error) {
-      return res.status(500).json({ message: 'Server error', error });
-    }
-  });
-  
-  ///Subrate user balance
-  const minusBalance = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { amount, paymentMethod, chequeDate } = req.body; // Add paymentMethod and chequeDate if needed
-  
-    try {
-      const customer = await CustomerUser.findById(id);
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
-      }
-  
-      // Check if the customer has sufficient balance
-      if (customer.balance < amount) {
-        return res.status(400).json({ message: 'Insufficient balance' });
-      }
-  
-      // Record the transaction
-      const transaction = {
-        amount: -parseFloat(amount), // Negative amount for debit
-        paymentMethod: paymentMethod || 'N/A', // Default value if not provided
-        chequeDate: chequeDate,
-        date: new Date(),
-        type: 'debit', // Type for subtraction
-      };
-  
-      customer.balance -= Math.abs(transaction.amount); // Subtract amount
-      customer.transactionHistory.push(transaction);
-  
-      if (paymentMethod === 'cheque' && chequeDate) {
-        customer.chequeDate = new Date(chequeDate);
-      }
-  
-      await customer.save();
-  
-      return res.status(200).json({ message: 'Balance subtracted successfully', customer });
-    } catch (error) {
-      return res.status(500).json({ message: 'Server error', error });
-    }
-  });
-  
-  ///Delete user
-  const deleteUser = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-  
-    try {
-      const customer = await CustomerUser.findByIdAndDelete(id);
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
-      }
-  
-      return res.status(200).json({ message: 'Customer deleted successfully' });
-    } catch (error) {
-      return res.status(500).json({ message: 'Server error', error });
-    }
-  });
 
-  ///get history
-  const getTransactionHistory = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-  console.log("click");
-  
-    try {
-      const customer = await CustomerUser.findById(id);
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
-      }
-  
-      return res.status(200).json({ transactionHistory: customer.transactionHistory });
-    } catch (error) {
-      return res.status(500).json({ message: 'Server error', error });
+    return res.status(200).json({ message: 'Balance subtracted successfully', customer });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+///Delete user
+const deleteUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const customer = await CustomerUser.findByIdAndDelete(id);
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
     }
-  });
+
+    return res.status(200).json({ message: 'Customer deleted successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+///get history
+const getTransactionHistory = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const customer = await CustomerUser.findById(id);
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    return res.status(200).json({ transactionHistory: customer.transactionHistory });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error });
+  }
+});
 module.exports = {
-    registerCustomer,
-    GetAllCustomer,
-    loginUser,
-    logout,
-    getUser,
-    loginStatus,
-    updateUser,
-    changePassword,
-    forgotPassword,
-    resetPassword,
-    addBalance,
-    minusBalance,
-    deleteUser,
-    getTransactionHistory
+  registerCustomer,
+  GetAllCustomer,
+  loginUser,
+  logout,
+  getUser,
+  loginStatus,
+  updateUser,
+  changePassword,
+  forgotPassword,
+  resetPassword,
+  addBalance,
+  minusBalance,
+  deleteUser,
+  getTransactionHistory
 };

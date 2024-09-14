@@ -38,7 +38,7 @@ const transactionSchema = new mongoose.Schema({
   },
 });
 
-const customerSchema = new mongoose.Schema(
+const supplierSchema = new mongoose.Schema(
   {
     username: {
       type: String,
@@ -70,4 +70,4 @@ const customerSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Customer", customerSchema);
+module.exports = mongoose.model("Supplier", supplierSchema);
