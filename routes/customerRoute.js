@@ -3,36 +3,35 @@ const router = express.Router();
 const {
   registerCustomer,
   GetAllCustomer,
-  loginUser,
-  logout,
-  getUser,
-  loginStatus,
-  updateUser,
-  changePassword,
-  forgotPassword,
-  resetPassword,
   addBalance,
   minusBalance,
   deleteUser,
-  getTransactionHistory
+  getTransactionHistory,
 } = require("../controllers/customerController");
 const protect = require("../middleWare/authMiddleware");
 
-router.post("/customerResgister",protect, registerCustomer);
-router.get("/allcustomer",protect, GetAllCustomer);
+// Multer for handling file uploads
+const multer = require("multer");
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // Limit file size to 5MB
+});
 
-router.post("/add-customer-balance/:id",protect, addBalance);
-router.post("/minus-customer-balance/:id",protect, minusBalance);
-router.delete("/Delete-customers/:id",protect, deleteUser);
-router.get("/transactionHistory/:id",protect, getTransactionHistory);
+// Customer registration should not be protected
+router.post("/customerResgister", registerCustomer);
 
-// router.post("/login", loginUser);
-// router.get("/logout", logout);
-// router.get("/getuser", protect, getUser);
-// router.get("/loggedin", loginStatus);
-// router.patch("/updateuser", protect, updateUser);
-// router.patch("/changepassword", protect, changePassword);
-// router.post("/forgotpassword", forgotPassword);
-// router.put("/resetpassword/:resetToken", resetPassword);
+// Protected routes
+router.get("/allcustomer", protect, GetAllCustomer);
+
+// Balance-related routes with Multer for file uploads
+router.post("/add-customer-balance/:id", protect, upload.single("image"), addBalance);
+router.post("/minus-customer-balance/:id", protect, upload.single("image"), minusBalance);
+
+
+// Other customer-related routes
+// Updated delete route for customer
+router.delete("/delete-customer/:id", protect, deleteUser);
+
+router.get("/transactionHistory/:id", protect, getTransactionHistory);
 
 module.exports = router;

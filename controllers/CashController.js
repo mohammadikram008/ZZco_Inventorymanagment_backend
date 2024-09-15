@@ -80,8 +80,75 @@ const getCurrentTotalBalance = asyncHandler(async (req, res) => {
   }
 });
 
+// Update a cash entry by ID
+const updateCash = asyncHandler(async (req, res) => {
+  const { balance, type } = req.body;
+
+  console.log("Received balance:", balance); // Log balance for debugging
+  console.log("Received type:", type);       // Log type for debugging
+
+  if (balance === undefined || (type !== 'add' && type !== 'deduct')) {
+    res.status(400);
+    throw new Error("Please provide both balance and a valid type (add/deduct)");
+  }
+
+  // Find the cash entry by ID
+  const cash = await Cash.findById(req.params.id);
+
+  if (!cash) {
+    res.status(404);
+    throw new Error("Cash entry not found");
+  }
+
+  // Update the cash entry
+  cash.balance = balance;
+  cash.type = type;
+
+  await cash.save();
+
+  res.status(200).json({ message: "Cash entry updated successfully", cash });
+});
+
+
+
+
+
+// Delete a cash entry by ID
+const deleteCash = asyncHandler(async (req, res) => {
+  const cashId = req.params.id;
+
+  // Find the cash entry by ID
+  const cash = await Cash.findById(cashId);
+
+  if (!cash) {
+    res.status(404);
+    throw new Error("Cash entry not found");
+  }
+
+  // Get the latest total balance
+  const latestCash = await Cash.findOne().sort({ createdAt: -1 });
+  let currentTotalBalance = latestCash ? latestCash.totalBalance : 0;
+
+  // Calculate the new total balance after deletion
+  const newTotalBalance = cash.type === 'add'
+    ? currentTotalBalance - cash.balance
+    : currentTotalBalance + cash.balance;
+
+  // Remove the cash entry
+  await cash.remove();
+
+  // Optionally: create a new entry for the total balance after deletion (if needed)
+
+  res.status(200).json({ message: "Cash entry deleted successfully", newTotalBalance });
+});
+
+
+
 module.exports = {
   addCash,
   getAllCash,
-  getCurrentTotalBalance
+  getCurrentTotalBalance,
+  updateCash,
+  deleteCash,
 };
+

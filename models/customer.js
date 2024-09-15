@@ -1,5 +1,9 @@
 const mongoose = require("mongoose");
 
+const capitalizeFirstLetter = (string) => {
+  return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+};
+
 const transactionSchema = new mongoose.Schema({
   amount: {
     type: Number,
@@ -7,8 +11,9 @@ const transactionSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['cash', 'online', 'cheque'],
+    enum: ['Cash', 'Online', 'Cheque'],  // Enum with capitalized values
     required: true,
+    set: capitalizeFirstLetter,  // Capitalize the first letter
   },
   chequeDate: {
     type: Date,
@@ -37,6 +42,7 @@ const transactionSchema = new mongoose.Schema({
     default: {}
   },
 });
+
 
 const customerSchema = new mongoose.Schema(
   {

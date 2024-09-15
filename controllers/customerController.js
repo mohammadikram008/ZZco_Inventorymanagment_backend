@@ -30,7 +30,7 @@ const registerCustomer = asyncHandler(async (req, res) => {
   }
 
   // Check if user email already exists
-  const userExists = await CustomerUser.findOne({ email });
+  const userExists = await CustomerUser.findOne({ email }); 
 
   if (userExists) {
     res.status(400);
@@ -328,173 +328,114 @@ const resetPassword = asyncHandler(async (req, res) => {
   });
 });
 
-//Add User Blance
 const addBalance = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  // Check if the data is in req.payload instead of req.body
-  const { amount, paymentMethod, chequeDate, description, bankId } =req.body;
-  console.log("req.body",req.body)
-  console.log("amount",amount);
+  const { amount, paymentMethod, chequeDate, description, bankId } = req.body;
+
+  // Ensure paymentMethod is lowercase
+  const lowerCasePaymentMethod = paymentMethod.toLowerCase();
+
   if (!amount || !paymentMethod) {
-    return res.status(400).json({ message: 'Missing required fields' });
+    return res.status(400).json({ message: 'Missing required fields or invalid amount' });
   }
-  
-  const customer = await CustomerUser.findById(id);
+
+  const customer = await CustomerUser.findById(req.params.id);
   if (!customer) {
     return res.status(404).json({ message: 'Customer not found' });
   }
-  
-  try {
-    let fileData = {};
-    if (req.file) {
-      fileData = {
-        fileName: req.file.filename,
-        filePath: req.file.path.replace(/\\/g, "/"),
-        fileType: req.file.mimetype,
-        fileSize: req.file.size,
-      };
+
+  const transaction = {
+    amount: parseFloat(amount),
+    paymentMethod: lowerCasePaymentMethod,  // Use lowercase here
+    description,
+    date: new Date(),
+    type: 'credit',  // For addBalance
+  };
+
+  if (lowerCasePaymentMethod === 'online') {
+    if (!bankId) {
+      return res.status(400).json({ message: 'Bank ID is required for online payments' });
     }
-
-    // Ensure amount is parsed correctly
-    // const parsedAmount = parseFloat(amount);
-    // if (isNaN(parsedAmount)) {
-    //   return res.status(400).json({ message: 'Invalid amount', receivedAmount: amount });
-    // }
-
-    const transaction = {
-      amount: amount,
-      paymentMethod,
-      description,
-      date: new Date(),
-      type: 'credit',
-      image: fileData,
-    };
-
-    if (paymentMethod === 'online') {
-      if (!bankId) {
-        return res.status(400).json({ message: 'Bank ID is required for online payments' });
-      }
-      const bank = await Bank.findById(bankId);
-      if (!bank) {
-        return res.status(404).json({ message: 'Bank not found' });
-      }
-      bank.balance += transaction.amount;
-      await bank.save();
-      transaction.bankName = bank.bankName;
-    } else if (paymentMethod === 'cash') {
-      const latestCash = await Cash.findOne().sort({ createdAt: -1 });
-      if (!latestCash) {
-        return res.status(404).json({ message: 'Cash account not found' });
-      }
-      const newTotalBalance = latestCash.totalBalance + transaction.amount;
-      await Cash.create({
-        balance: transaction.amount,
-        totalBalance: newTotalBalance,
-        type: 'add'
-      });
-    } else if (paymentMethod === 'cheque') {
-      if (!chequeDate) {
-        return res.status(400).json({ message: 'Cheque date is required for cheque payments' });
-      }
-      transaction.chequeDate = new Date(chequeDate);
-    } else {
-      return res.status(400).json({ message: 'Invalid payment method' });
+    const bank = await Bank.findById(bankId);
+    if (!bank) {
+      return res.status(404).json({ message: 'Bank not found' });
     }
-
-    customer.balance += transaction.amount;
-    customer.transactionHistory.push(transaction);
-
-    await customer.save();
-
-    return res.status(200).json({ 
-      message: 'Balance added successfully', 
-      customer,
-      addedAmount: parsedAmount,
-      newBalance: customer.balance
-    });
-  } catch (error) {
-    console.error('Error adding balance:', error);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    bank.balance += parseFloat(amount);
+    await bank.save();
+    transaction.bankName = bank.bankName;
+  } else if (lowerCasePaymentMethod === 'cheque') {
+    if (!chequeDate) {
+      return res.status(400).json({ message: 'Cheque date is required for cheque payments' });
+    }
+    transaction.chequeDate = new Date(chequeDate);
   }
+
+  customer.balance += parseFloat(amount);
+  customer.transactionHistory.push(transaction);
+
+  await customer.save();
+
+  return res.status(200).json({ message: 'Balance added successfully', customer });
 });
 
-///Subrate user balance
 const minusBalance = asyncHandler(async (req, res) => {
-  const { id } = req.params;
   const { amount, paymentMethod, chequeDate, description, bankId } = req.body;
 
-  try {
-    const customer = await CustomerUser.findById(id);
-    if (!customer) {
-      return res.status(404).json({ message: 'Customer not found' });
-    }
+  // Ensure paymentMethod is lowercase
+  const lowerCasePaymentMethod = paymentMethod.toLowerCase();
 
-    // Check if the customer has sufficient balance
-    if (customer.balance < amount) {
-      return res.status(400).json({ message: 'Insufficient balance' });
-    }
-
-    // Record the transaction
-    const transaction = {
-      amount: -parseFloat(amount), // Negative amount for debit
-      paymentMethod,
-      chequeDate,
-      description,
-      date: new Date(),
-      type: 'debit', // Type for subtraction
-    };
-    switch (paymentMethod) {
-      case 'online':
-        if (!bankId) {
-          return res.status(400).json({ message: 'Bank ID is required for online payments' });
-        }
-        const bank = await Bank.findById(bankId);
-        if (!bank) {
-          return res.status(404).json({ message: 'Bank not found' });
-        }
-        bank.balance -= parseFloat(amount);
-        await bank.save();
-        transaction.bankName = bank.name;
-        break;
-
-      case 'cash':
-        const cashAccount = await Cash.findOne();
-        if (!cashAccount) {
-          return res.status(404).json({ message: 'Cash account not found' });
-        }
-        cashAccount.balance -= parseFloat(amount);
-        await cashAccount.save();
-        transaction.cashAccountId = cashAccount._id;
-        break;
-      case 'cheque':
-        if (!chequeDate) {
-          return res.status(400).json({ message: 'Cheque date is required for cheque payments' });
-        }
-        transaction.chequeDate = new Date(chequeDate);
-        break;
-
-      default:
-        return res.status(400).json({ message: 'Invalid payment method' });
-    }
-
-    customer.balance -= parseFloat(amount);
-    customer.transactionHistory.push(transaction);
-
-
-    if (paymentMethod === 'cheque' && chequeDate) {
-      customer.chequeDate = new Date(chequeDate);
-    }
-
-    await customer.save();
-
-    return res.status(200).json({ message: 'Balance subtracted successfully', customer });
-  } catch (error) {
-    return res.status(500).json({ message: 'Server error', error });
+  if (!amount || !paymentMethod) {
+    return res.status(400).json({ message: 'Missing required fields or invalid amount' });
   }
+
+  const customer = await CustomerUser.findById(req.params.id);
+  if (!customer) {
+    return res.status(404).json({ message: 'Customer not found' });
+  }
+
+  if (customer.balance < amount) {
+    return res.status(400).json({ message: 'Insufficient balance' });
+  }
+
+  const transaction = {
+    amount: -parseFloat(amount),  // Negative for debit
+    paymentMethod: lowerCasePaymentMethod,  // Use lowercase here
+    description,
+    date: new Date(),
+    type: 'debit',  // For minusBalance
+  };
+
+  if (lowerCasePaymentMethod === 'online') {
+    if (!bankId) {
+      return res.status(400).json({ message: 'Bank ID is required for online payments' });
+    }
+    const bank = await Bank.findById(bankId);
+    if (!bank) {
+      return res.status(404).json({ message: 'Bank not found' });
+    }
+    bank.balance -= parseFloat(amount);
+    await bank.save();
+    transaction.bankName = bank.bankName;
+  } else if (lowerCasePaymentMethod === 'cheque') {
+    if (!chequeDate) {
+      return res.status(400).json({ message: 'Cheque date is required for cheque payments' });
+    }
+    transaction.chequeDate = new Date(chequeDate);
+  }
+
+  customer.balance -= parseFloat(amount);
+  customer.transactionHistory.push(transaction);
+
+  await customer.save();
+
+  return res.status(200).json({ message: 'Balance subtracted successfully', customer });
 });
 
-///Delete user
+
+
+
+
 const deleteUser = asyncHandler(async (req, res) => {
+  console.log("Received request to delete customer with ID:", req.params.id);
   const { id } = req.params;
 
   try {
@@ -505,9 +446,12 @@ const deleteUser = asyncHandler(async (req, res) => {
 
     return res.status(200).json({ message: 'Customer deleted successfully' });
   } catch (error) {
+    console.error("Error deleting customer:", error);
     return res.status(500).json({ message: 'Server error', error });
   }
 });
+
+
 
 ///get history
 const getTransactionHistory = asyncHandler(async (req, res) => {

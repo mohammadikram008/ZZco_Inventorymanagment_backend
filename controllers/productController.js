@@ -12,15 +12,23 @@ cloudinary.config({
 });
 
 const createProduct = asyncHandler(async (req, res) => {
-  const { name, sku, category, quantity, price, description, paymentMethod, chequeDate, bank, warehouse, status } = req.body;
-  console.log("bank", bank);
-  // Validation
-  if (!name || !category || !quantity || !price || !paymentMethod || !warehouse) {
+  console.log(req.body); // Log the request body to debug the incoming data
+
+  const { name, category, quantity, price, paymentMethod, chequeDate, bank, warehouse, shippingType, status } = req.body;
+
+  // Ensure the required fields are filled
+  if (!name || !category || !quantity || !price || !paymentMethod || !shippingType) {
     res.status(400);
     throw new Error("Please fill in all required fields");
   }
 
-  // Additional validation for payment method specific fields
+  // Validate warehouse for local shipping
+  if (shippingType === "local" && !warehouse) {
+    res.status(400);
+    throw new Error("Warehouse is required for local shipping");
+  }
+
+  // Handle other validations
   if (paymentMethod === "cheque" && !chequeDate) {
     res.status(400);
     throw new Error("Cheque date is required for cheque payments");
@@ -36,62 +44,31 @@ const createProduct = asyncHandler(async (req, res) => {
   if (req.file) {
     fileData = {
       fileName: req.file.filename,
-      filePath: req.file.path.replace(/\\/g, "/"), // Use forward slashes for web compatibility
+      filePath: req.file.path.replace(/\\/g, "/"),
       fileType: req.file.mimetype,
       fileSize: req.file.size,
     };
   }
 
-
   // Create Product
   const product = await Product.create({
     user: req.user.id,
     name,
-    sku,
     category,
     quantity,
     price,
-    // description,
     image: fileData,
     paymentMethod,
     chequeDate: paymentMethod === "cheque" ? chequeDate : undefined,
     bank: paymentMethod === "online" ? bank : undefined,
-    warehouse,
-    status
+    warehouse: shippingType === "local" ? warehouse : undefined,
+    shippingType,
+    status,
   });
-  const totalAmount = price * quantity;
 
-  if (paymentMethod === 'online') {
-    if (!bank) {
-      throw new Error('Bank ID is required for online payments');
-    }
-    const bankAccount = await Bank.findById(bank);
-    if (!bankAccount) {
-      throw new Error('Bank not found');
-    }
-    if (bankAccount.balance < totalAmount) {
-      throw new Error('Insufficient funds in the bank account');
-    }
-    bankAccount.balance -= totalAmount;
-
-    await bankAccount.save();
-  } else if (paymentMethod === 'cash') {
-    const latestCash = await Cash.findOne().sort({ createdAt: -1 });
-    if (!latestCash) {
-      throw new Error('Cash account not found');
-    }
-    if (latestCash.totalBalance < totalAmount) {
-      throw new Error('Insufficient cash');
-    }
-    const newTotalBalance = latestCash.totalBalance - totalAmount;
-    await Cash.create({
-      balance: -totalAmount,
-      totalBalance: newTotalBalance,
-      type: 'deduct'
-    });
-  }
   res.status(201).json({ message: "Product created successfully", product });
 });
+
 
 
 
