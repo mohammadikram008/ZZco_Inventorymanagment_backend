@@ -77,26 +77,27 @@ const getProducts = asyncHandler(async (req, res) => {
   const products = await Product.find({ user: req.user.id }).sort("-createdAt");
   res.status(200).json(products);
 });
-
-// Get single product
+ 
 const getProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id).populate('warehouse', 'name');
-  // if product doesnt exist
+
   if (!product) {
     res.status(404);
     throw new Error("Product not found");
   }
-  // Match product to its user
+
   if (product.user.toString() !== req.user.id) {
     res.status(401);
     throw new Error("User not authorized");
   }
-  // Create a new object with the product data and the warehouse name
-  const productWithWarehouseName = {
+
+  res.status(200).json({
     ...product.toObject(),
-    warehouseName: product.warehouse ? product.warehouse.name : null
-  };
-  res.status(200).json(productWithWarehouseName);
+    warehouseName: product.warehouse ? product.warehouse.name : null,
+    totalShipped: product.totalShipped, // Add total shipped quantity
+    receivedQuantity: product.receivedQuantity, // Add received quantity
+    remainingInShipping: product.totalShipped - product.receivedQuantity, // Calculate remaining products in shipping
+  });
 });
 
 // Delete Product
@@ -116,10 +117,11 @@ const deleteProduct = asyncHandler(async (req, res) => {
   res.status(200).json({ message: "Product deleted." });
 });
 
-// Update Product
-// Update Product
+ 
+ 
+// Update Product Controller for shipping and stock management
 const updateProduct = asyncHandler(async (req, res) => {
-  const { name, sku, category, quantity, price, description, paymentMethod, chequeDate, bank, warehouse, status } = req.body;
+  const { name, category, quantity, price, paymentMethod, shippingType, status, totalShipped, receivedQuantity } = req.body;
   const { id } = req.params;
 
   const product = await Product.findById(id);
@@ -136,50 +138,34 @@ const updateProduct = asyncHandler(async (req, res) => {
     throw new Error("User not authorized");
   }
 
-  // Validation
-  if (!name || !category || !quantity || !price || !paymentMethod || !warehouse) {
+  // Validation for required fields
+  if (!name || !category || !quantity || !price || !paymentMethod || !shippingType) {
     res.status(400);
     throw new Error("Please fill in all required fields");
   }
 
-  // Additional validation for payment method specific fields
-  if (paymentMethod === "cheque" && !chequeDate) {
+  // Handle updating shipping quantities
+  let newTotalShipped = totalShipped || product.totalShipped;
+  let newReceivedQuantity = receivedQuantity || product.receivedQuantity;
+
+  if (newReceivedQuantity > newTotalShipped) {
     res.status(400);
-    throw new Error("Cheque date is required for cheque payments");
+    throw new Error("Received quantity cannot exceed total shipped products.");
   }
 
-  if (paymentMethod === "online" && !bank) {
-    res.status(400);
-    throw new Error("Bank is required for online payments");
-  }
-
-  // Handle Image upload
-  let fileData = {};
-  if (req.file) {
-    fileData = {
-      fileName: req.file.filename,
-      filePath: req.file.path.replace(/\\/g, "/"),
-      fileType: req.file.mimetype,
-      fileSize: req.file.size,
-    };
-  }
-
-  // Update Product
+  // Update Product details
   const updatedProduct = await Product.findByIdAndUpdate(
     { _id: id },
     {
       name,
-      sku,
       category,
       quantity,
       price,
-      description,
-      image: Object.keys(fileData).length === 0 ? product.image : fileData,
       paymentMethod,
-      chequeDate: paymentMethod === "cheque" ? chequeDate : undefined,
-      bank: paymentMethod === "online" ? bank : undefined,
-      warehouse,
-      status
+      shippingType,
+      status,
+      totalShipped: newTotalShipped, // Update total shipped quantity
+      receivedQuantity: newReceivedQuantity, // Update received quantity
     },
     {
       new: true,
@@ -187,36 +173,70 @@ const updateProduct = asyncHandler(async (req, res) => {
     }
   );
 
-  // Handle payment method changes
-  const totalAmount = updatedProduct.price * updatedProduct.quantity;
+  res.status(200).json(updatedProduct);
+});
 
-  if (paymentMethod === 'online') {
-    if (!bank) {
-      throw new Error('Bank ID is required for online payments');
-    }
-    const bankAccount = await Bank.findById(bank);
-    if (!bankAccount) {
-      throw new Error('Bank not found');
-    }
-    if (bankAccount.balance < totalAmount) {
-      throw new Error('Insufficient funds in the bank account');
-    }
-    bankAccount.balance -= totalAmount;
-    await bankAccount.save();
-  } else if (paymentMethod === 'cash') {
-    const cash = await Cash.findOne();
-    if (!cash) {
-      throw new Error('Cash account not found');
-    }
-    if (cash.balance < totalAmount) {
-      throw new Error('Insufficient cash');
-    }
-    cash.balance -= totalAmount;
-    await cash.save();
+// Controller to handle product receiving
+const receiveProduct = asyncHandler(async (req, res) => {
+  const { receivedQuantity } = req.body;
+  const { id } = req.params;
+
+  const product = await Product.findById(id);
+
+  if (!product) {
+    res.status(404);
+    throw new Error("Product not found");
   }
+
+  if (receivedQuantity > product.totalShipped) {
+    res.status(400);
+    throw new Error("Received quantity cannot exceed shipped quantity");
+  }
+
+  product.receivedQuantity = receivedQuantity;
+
+  const updatedProduct = await product.save();
 
   res.status(200).json(updatedProduct);
 });
+
+
+const updateReceivedQuantity = asyncHandler(async (req, res) => {
+  const { receivedQuantity } = req.body; // New received quantity to update
+  const { id } = req.params; // Product ID from request params
+
+  const product = await Product.findById(id); // Find the product by its ID
+
+  if (!product) {
+    res.status(404);
+    throw new Error("Product not found");
+  }
+
+  const totalShipped = product.totalShipped; // Total products currently in shipping
+  const currentReceivedQuantity = product.receivedQuantity || 0; // Current received quantity (default 0)
+  
+  const newTotalReceived = parseInt(receivedQuantity); // Quantity received from the user input
+  const remainingInShipping = totalShipped - newTotalReceived; // Remaining quantity still in shipping
+
+  // Ensure that the received quantity does not exceed the total shipped quantity
+  if (newTotalReceived > totalShipped) {
+    return res.status(400).json({ message: "Received quantity cannot exceed shipped quantity." });
+  }
+
+  // Update product with new quantities
+  product.receivedQuantity = currentReceivedQuantity + newTotalReceived; // Increase received quantity
+  product.totalShipped = remainingInShipping; // Decrease total shipped by the received amount
+
+  await product.save(); // Save the updated product
+
+  res.status(200).json({
+    message: "Received quantity updated successfully",
+    product,
+    inStock: product.receivedQuantity, // Show the updated received quantity as in stock
+    inShipping: product.totalShipped, // Show the updated remaining quantity in shipping
+  });
+});
+
 
 
 module.exports = {
@@ -225,4 +245,6 @@ module.exports = {
   getProduct,
   deleteProduct,
   updateProduct,
+  receiveProduct,
+  updateReceivedQuantity
 };

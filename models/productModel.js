@@ -24,6 +24,15 @@ const productSchema = mongoose.Schema(
       trim: true,
     },
     shippingType: { type: String, required: true },
+
+    totalShipped: {
+      type: Number,
+      default: 0, // Default value as 0
+    },
+    receivedQuantity: {
+      type: Number,
+      default: 0, // Default value as 0
+    },
     
     quantity: {
       type: String,
