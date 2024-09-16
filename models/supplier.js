@@ -4,6 +4,7 @@ const capitalizeFirstLetter = (string) => {
   return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
 };
 
+// Transaction schema remains the same
 const transactionSchema = new mongoose.Schema({
   amount: {
     type: Number,
@@ -39,11 +40,11 @@ const transactionSchema = new mongoose.Schema({
   },
   image: {
     type: Object,
-    default: {}
+    default: {},
   },
 });
 
-
+// Supplier schema remains the same
 const supplierSchema = new mongoose.Schema(
   {
     username: {
@@ -76,4 +77,5 @@ const supplierSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Supplier", supplierSchema);
+// Check if the model is already compiled before defining it
+module.exports = mongoose.models.Supplier || mongoose.model("Supplier", supplierSchema);

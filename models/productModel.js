@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+
 const productSchema = mongoose.Schema(
   {
     user: {
@@ -14,7 +15,6 @@ const productSchema = mongoose.Schema(
     },
     sku: {
       type: String,
-      // required: true,
       default: "SKU",
       trim: true,
     },
@@ -23,32 +23,28 @@ const productSchema = mongoose.Schema(
       required: [true, "Please add a category"],
       trim: true,
     },
-    shippingType: { type: String, required: true },
-
+    shippingType: { 
+      type: String, 
+      required: true 
+    },
     totalShipped: {
       type: Number,
-      default: 0, // Default value as 0
+      default: 0, // Ensure it's initialized to 0
     },
     receivedQuantity: {
       type: Number,
-      default: 0, // Default value as 0
+      default: 0, // Ensure it's initialized to 0
     },
-    
     quantity: {
-      type: String,
+      type: Number, // Change this to Number
       required: [true, "Please add a quantity"],
       trim: true,
     },
     price: {
-      type: String,
+      type: Number, // Change this to Number
       required: [true, "Please add a price"],
       trim: true,
     },
-    // description: {
-    //   type: String,
-    //   required: [true, "Please add a description"],
-    //   trim: true,
-    // },
     image: {
       type: Object,
       default: {},
@@ -70,14 +66,18 @@ const productSchema = mongoose.Schema(
     warehouse: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Warehouse",
-      required: [true, "Please select a warehouse"],
+      required: function() { return this.shippingType === "local"; }, // Required only for local shipping
     },
     status: {
       type: Boolean,
       default: false,
     },
+    supplier: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Supplier", // Add reference to Supplier
+      required: [true, "Please add a supplier"], // Make it mandatory
+    },
   },
-  
   {
     timestamps: true,
   }
@@ -85,3 +85,5 @@ const productSchema = mongoose.Schema(
 
 const Product = mongoose.model("Product", productSchema);
 module.exports = Product;
+
+

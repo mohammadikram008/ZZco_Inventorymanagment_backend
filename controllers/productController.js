@@ -4,6 +4,7 @@ const { fileSizeFormatter } = require("../utils/fileUpload");
 const cloudinary = require("cloudinary").v2;
 const Bank = require('../models/Bank');
 const Cash = require('../models/Cash');
+const Supplier = require('../models/Supplier'); 
 // Create Prouct
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -14,32 +15,46 @@ cloudinary.config({
 const createProduct = asyncHandler(async (req, res) => {
   console.log(req.body); // Log the request body to debug the incoming data
 
-  const { name, category, quantity, price, paymentMethod, chequeDate, bank, warehouse, shippingType, status } = req.body;
+  const { name, category, quantity, price, paymentMethod, chequeDate, bank, warehouse, shippingType, supplier, status } = req.body;
 
   // Ensure the required fields are filled
-  if (!name || !category || !quantity || !price || !paymentMethod || !shippingType) {
+  if (!name || !category || !quantity || !price || !paymentMethod || !shippingType || !supplier) {
     res.status(400);
-    throw new Error("Please fill in all required fields");
+    throw new Error("Please fill in all required fields, including supplier.");
   }
 
   // Validate warehouse for local shipping
   if (shippingType === "local" && !warehouse) {
     res.status(400);
-    throw new Error("Warehouse is required for local shipping");
+    throw new Error("Warehouse is required for local shipping.");
   }
 
-  // Handle other validations
+  // Validate supplier
+  const existingSupplier = await Supplier.findById(supplier);
+  if (!existingSupplier) {
+    res.status(400);
+    throw new Error("Supplier not found.");
+  }
+
+  // Handle cheque validation
   if (paymentMethod === "cheque" && !chequeDate) {
     res.status(400);
-    throw new Error("Cheque date is required for cheque payments");
+    throw new Error("Cheque date is required for cheque payments.");
   }
 
+  // Handle bank validation for online payments
   if (paymentMethod === "online" && !bank) {
     res.status(400);
-    throw new Error("Bank is required for online payments");
+    throw new Error("Bank is required for online payments.");
   }
 
-  // Handle Image upload
+  // Initialize totalShipped based on shipping type
+  let totalShipped = 0;
+  if (shippingType === "international") {
+    totalShipped = parseInt(quantity); // Assume all items are shipped initially for international shipping
+  }
+
+  // Handle Image upload (optional)
   let fileData = {};
   if (req.file) {
     fileData = {
@@ -50,24 +65,62 @@ const createProduct = asyncHandler(async (req, res) => {
     };
   }
 
+  // Calculate the total product amount
+  const totalAmount = price * quantity;
+
   // Create Product
   const product = await Product.create({
     user: req.user.id,
     name,
     category,
-    quantity,
-    price,
-    image: fileData,
+    quantity: parseInt(quantity), // Ensure quantity is stored as a number
+    price: parseFloat(price), // Ensure price is stored as a number
+    image: fileData, // Optional image field
     paymentMethod,
-    chequeDate: paymentMethod === "cheque" ? chequeDate : undefined,
-    bank: paymentMethod === "online" ? bank : undefined,
-    warehouse: shippingType === "local" ? warehouse : undefined,
+    chequeDate: paymentMethod === "cheque" ? chequeDate : undefined, // Include only if payment method is cheque
+    bank: paymentMethod === "online" ? bank : undefined, // Include only if payment method is online
+    warehouse: shippingType === "local" ? warehouse : undefined, // Include warehouse if shipping type is local
     shippingType,
+    supplier, // Add the supplier to the product
     status,
+    totalShipped, // Set totalShipped for international shipping
   });
+
+  // Handle payment method (deducting balances)
+  if (paymentMethod === 'online') {
+    if (!bank) {
+      throw new Error('Bank ID is required for online payments.');
+    }
+    const bankAccount = await Bank.findById(bank);
+    if (!bankAccount) {
+      throw new Error('Bank not found.');
+    }
+    if (bankAccount.balance < totalAmount) {
+      throw new Error('Insufficient funds in the bank account.');
+    }
+    bankAccount.balance -= totalAmount;
+    await bankAccount.save();
+  } else if (paymentMethod === 'cash') {
+    const latestCash = await Cash.findOne().sort({ createdAt: -1 });
+    if (!latestCash) {
+      throw new Error('Cash account not found.');
+    }
+    if (latestCash.totalBalance < totalAmount) {
+      throw new Error('Insufficient cash.');
+    }
+    const newTotalBalance = latestCash.totalBalance - totalAmount;
+    await Cash.create({
+      balance: -totalAmount,
+      totalBalance: newTotalBalance,
+      type: 'deduct',
+    });
+  }
 
   res.status(201).json({ message: "Product created successfully", product });
 });
+
+
+
 
 
 
@@ -200,40 +253,42 @@ const receiveProduct = asyncHandler(async (req, res) => {
   res.status(200).json(updatedProduct);
 });
 
-
 const updateReceivedQuantity = asyncHandler(async (req, res) => {
-  const { receivedQuantity } = req.body; // New received quantity to update
-  const { id } = req.params; // Product ID from request params
+  const { receivedQuantity } = req.body; // The new quantity to be received
+  const { id } = req.params;
 
-  const product = await Product.findById(id); // Find the product by its ID
+  // Find the product by its ID
+  const product = await Product.findById(id);
 
   if (!product) {
-    res.status(404);
-    throw new Error("Product not found");
+    return res.status(404).json({ message: "Product not found" });
   }
 
-  const totalShipped = product.totalShipped; // Total products currently in shipping
-  const currentReceivedQuantity = product.receivedQuantity || 0; // Current received quantity (default 0)
-  
-  const newTotalReceived = parseInt(receivedQuantity); // Quantity received from the user input
-  const remainingInShipping = totalShipped - newTotalReceived; // Remaining quantity still in shipping
+  const totalQuantity = product.quantity; // Total quantity in shipping
+  const currentReceivedQuantity = product.receivedQuantity || 0; // Already received quantity
 
-  // Ensure that the received quantity does not exceed the total shipped quantity
-  if (newTotalReceived > totalShipped) {
-    return res.status(400).json({ message: "Received quantity cannot exceed shipped quantity." });
+  // Calculate the new total received quantity
+  const updatedReceivedQuantity = currentReceivedQuantity + receivedQuantity;
+
+  // Ensure that the received quantity doesn't exceed the total quantity
+  if (updatedReceivedQuantity > totalQuantity) {
+    return res.status(400).json({ message: "Received quantity cannot exceed total product quantity." });
   }
 
-  // Update product with new quantities
-  product.receivedQuantity = currentReceivedQuantity + newTotalReceived; // Increase received quantity
-  product.totalShipped = remainingInShipping; // Decrease total shipped by the received amount
+  // Update the product's received quantity and calculate the remaining quantity in shipping
+  product.receivedQuantity = updatedReceivedQuantity;
 
-  await product.save(); // Save the updated product
+  const remainingInShipping = totalQuantity - updatedReceivedQuantity;
 
-  res.status(200).json({
-    message: "Received quantity updated successfully",
-    product,
-    inStock: product.receivedQuantity, // Show the updated received quantity as in stock
-    inShipping: product.totalShipped, // Show the updated remaining quantity in shipping
+  // Save the updated product
+  await product.save();
+
+  res.status(200).json({ 
+    message: "Quantity updated successfully", 
+    product: {
+      ...product.toObject(),
+      remainingInShipping, // Update remaining in shipping in the response
+    }
   });
 });
 
