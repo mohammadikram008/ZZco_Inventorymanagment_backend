@@ -13,7 +13,7 @@ const HistorySchema = new mongoose.Schema({
   },
   entityType: {
     type: String,
-    enum: ['PRODUCT', 'CUSTOMER', 'SUPPLIER'],
+    enum: ['PRODUCT', 'SALE', 'CUSTOMER', 'SUPPLIER'],
     required: true
   },
   entityId: {
