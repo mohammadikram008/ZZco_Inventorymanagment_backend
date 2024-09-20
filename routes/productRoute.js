@@ -7,7 +7,7 @@ const {
     getProduct,
     deleteProduct,
     updateProduct,
-    receiveProduct,
+    // receiveProduct,
     updateReceivedQuantity
 } = require('../controllers/productController');
 const upload = require('../utils/fileUpload'); // Updated import to use Multer
@@ -18,7 +18,7 @@ router.patch('/:id', protect, upload.single('image'), updateProduct);
 router.get('/', protect, getProducts);
 router.get('/:id', protect, getProduct);
 router.delete('/:id', protect, deleteProduct);
-router.patch('/receive/:id', protect, receiveProduct);
+// router.patch('/receive/:id', protect, receiveProduct);
 router.patch('/receive/:id', protect, updateReceivedQuantity);
 
 module.exports = router;

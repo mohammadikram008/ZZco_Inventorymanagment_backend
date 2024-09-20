@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const sendEmail = require("../utils/sendEmail");
 const Bank = require("../models/Bank");
 const Cash = require("../models/Cash"); // Assume you have a Cash model
+const History = require("../models/history");
 
 // Generate Token
 const generateToken = (id) => {
@@ -96,7 +97,7 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   // Check if user exists
-  const user = await User.findOne({ email });
+  const user = await CustomerUser.findOne({ email });
 
   if (!user) {
     res.status(400);
@@ -150,7 +151,7 @@ const logout = asyncHandler(async (req, res) => {
 
 // Get User Data
 const getUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await CustomerUser.findById(req.user._id);
 
   if (user) {
     const { _id, name, email, photo, phone, bio } = user;
@@ -373,7 +374,17 @@ const addBalance = asyncHandler(async (req, res) => {
   customer.transactionHistory.push(transaction);
 
   await customer.save();
-
+  await History.create({
+    user: req.user._id,
+    action: 'ADD_BALANCE',
+    entityType: 'CUSTOMER',
+    entityId: customer._id,
+    amount: parseFloat(amount),
+    debit: 0,
+    credit: parseFloat(amount),
+    balance: customer.balance,
+    description: `Added balance for customer ${customer.username}`,
+  });
   return res.status(200).json({ message: 'Balance added successfully', customer });
 });
 
@@ -426,7 +437,17 @@ const minusBalance = asyncHandler(async (req, res) => {
   customer.transactionHistory.push(transaction);
 
   await customer.save();
-
+  await History.create({
+    user: req.user._id,
+    action: 'MINUS_BALANCE',
+    entityType: 'CUSTOMER',
+    entityId: customer._id,
+    amount: parseFloat(amount),
+    debit: parseFloat(amount),
+    credit: 0,
+    balance: customer.balance,
+    description: `Subtracted balance for customer ${customer.username}`,
+  });
   return res.status(200).json({ message: 'Balance subtracted successfully', customer });
 });
 
@@ -443,6 +464,19 @@ const deleteUser = asyncHandler(async (req, res) => {
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found' });
     }
+    await History.create({
+      user: req.user._id,
+      action: 'DELETE_CUSTOMER',
+      entityType: 'CUSTOMER',
+      entityId: customer._id,
+      amount: 0,
+      debit: 0,
+      credit: 0,
+      balance: 0,
+      description: `Deleted customer ${customer.username}`,
+    });
+
+    await CustomerUser.findByIdAndDelete(id);
 
     return res.status(200).json({ message: 'Customer deleted successfully' });
   } catch (error) {

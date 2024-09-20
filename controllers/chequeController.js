@@ -5,7 +5,7 @@ const Sale = require('../models/Sale');
 const getCheques = asyncHandler(async (req, res) => {
   try {
     const pendingProductCheques = await Product.find({
-      paymentMethod: 'Cheque',
+      paymentMethod: 'cheque',
       status: false
     }).select('name chequeDate image status paymentMethod');
 
@@ -32,7 +32,7 @@ const getCheques = asyncHandler(async (req, res) => {
         type: 'Sale'
       }))
     ];
-console.log("allPendingCheques", allPendingCheques);
+    console.log("allPendingCheques", allPendingCheques);
     res.json(allPendingCheques);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -75,7 +75,7 @@ const updateChequeStatus = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
- 
+
   getCheques,
   updateChequeStatus,
 };

@@ -64,15 +64,15 @@ const updateWarehouse = asyncHandler(async (req, res) => {
 
 // get warehouse with product
 const getProductsByWarehouse = asyncHandler(async (req, res) => {
-  const { warehouseId } = req.params;
-
+  const warehouseId = req.params.id;
   const products = await Product.find({ warehouse: warehouseId })
+
     .populate("warehouse", "name location")
     .sort("-createdAt");
-
+  console.log("products", products);
   if (products.length === 0) {
     res.status(404);
-    throw new Error("No products found for this warehouse");
+    res.status(200).json({ message: "No products found for this warehouse" });
   }
 
   res.status(200).json(products);

@@ -3,6 +3,7 @@ const Sale = require("../models/Sale");
 const Bank = require('../models/Bank');
 const Cash = require('../models/Cash');
 const { fileSizeFormatter } = require("../utils/fileUpload");
+const History = require("../models/history");
 const cloudinary = require("cloudinary").v2;
 
 // Configure Cloudinary
@@ -28,7 +29,7 @@ const AddSale = asyncHandler(async (req, res) => {
     if (req.file) {
         fileData = {
             fileName: req.file.filename,
-            filePath: req.file.path.replace(/\\/g, "/"), // Use forward slashes for web compatibility
+            filePath: req.file.path.replace(/\\/g, "/"), 
             fileType: req.file.mimetype,
             fileSize: req.file.size,
         };
@@ -50,7 +51,7 @@ const AddSale = asyncHandler(async (req, res) => {
             status
         });
         await sale.save();
-        // const totalAmount = stockSold * totalSaleAmount;
+        const totalAmount = stockSold * totalSaleAmount;
 
         if (paymentMethod === 'online') {
             if (!bankID) {
@@ -75,6 +76,17 @@ const AddSale = asyncHandler(async (req, res) => {
                 type: 'add'
             });
         }
+        await History.create({
+            user: req.user._id,
+            action: 'ADD_SALE',
+            entityType: 'SALE',
+            entityId: sale._id,
+            amount: parseFloat(totalSaleAmount),
+            debit: 0,
+            quantity: stockSold,
+            credit: parseFloat(totalSaleAmount),
+            balance,
+        });
         res.status(201).json({ message: 'Sale added successfully!', sale });
     } catch (error) {
         console.error('Error adding sale:', error);

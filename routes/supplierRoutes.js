@@ -9,6 +9,7 @@ const {
   addTransaction,
   getTransactionHistory,
   deleteSupplier,
+  minusBalance
 } = require('../controllers/supplierController');
 
 // Multer for handling file uploads
@@ -25,6 +26,7 @@ router.post('/add', protect, createSupplier);
 
 // Add a transaction (credit/debit) with file uploads (e.g., cheque image)
 router.post('/:id/transaction', protect, upload.single('image'), addTransaction);
+router.post("/minus-supplier-balance/:id", protect, upload.single("image"), minusBalance);
 
 // Get transaction history for a supplier
 router.get('/:id/transaction-history', protect, getTransactionHistory);

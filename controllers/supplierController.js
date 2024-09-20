@@ -1,5 +1,6 @@
 const Supplier = require('../models/Supplier');
-const Bank = require('../models/Bank'); 
+const Bank = require('../models/Bank');
+const History = require('../models/history');
 // Get all suppliers
 exports.getAllSuppliers = async (req, res) => {
   try {
@@ -15,6 +16,7 @@ exports.createSupplier = async (req, res) => {
   const supplier = new Supplier(req.body);
   try {
     const newSupplier = await supplier.save();
+
     res.status(201).json(newSupplier);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -74,16 +76,23 @@ exports.addTransaction = async (req, res) => {
 
     // Save the supplier with updated balance and transaction history
     await supplier.save();
-    
+    await History.create({
+      user: req.user._id,
+      action: 'ADD_SUPPLIER_TRANSACTION',
+      entityType: 'SUPPLIER',
+      entityId: supplier._id,
+      amount: parseFloat(amount),
+      debit: transaction.type === 'debit' ? parseFloat(amount) : 0,
+      credit: transaction.type === 'credit' ? parseFloat(amount) : 0,
+      balance: supplier.balance,
+      description: `Added ${transaction.type} transaction for supplier ${supplier.name}`,
+    });
     res.status(201).json({ message: "Transaction added successfully", supplier });
   } catch (error) {
     console.error("Error adding transaction:", error);
     res.status(400).json({ message: error.message });
   }
 };
-
-
-
 
 // Get transaction history for a supplier
 exports.getTransactionHistory = async (req, res) => {
@@ -97,6 +106,72 @@ exports.getTransactionHistory = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+exports.minusBalance = async (req, res) => {
+  const { amount, paymentMethod, chequeDate, description, bankId } = req.body;
+
+  // Ensure paymentMethod is lowercase
+  const lowerCasePaymentMethod = paymentMethod.toLowerCase();
+
+  if (!amount || !paymentMethod) {
+    return res.status(400).json({ message: 'Missing required fields or invalid amount' });
+  }
+
+  const supplier = await Supplier.findById(req.params.id);
+  if (!supplier) {
+    return res.status(404).json({ message: 'Supplier not found' });
+  }
+
+  if (supplier.balance < amount) {
+    return res.status(400).json({ message: 'Insufficient balance' });
+  }
+
+  const transaction = {
+    amount: -parseFloat(amount),  // Negative for debit
+    paymentMethod: lowerCasePaymentMethod,
+    description,
+    date: new Date(),
+    type: 'debit',
+  };
+
+  if (lowerCasePaymentMethod === 'online') {
+    if (!bankId) {
+      return res.status(400).json({ message: 'Bank ID is required for online payments' });
+    }
+    const bank = await Bank.findById(bankId);
+    if (!bank) {
+      return res.status(404).json({ message: 'Bank not found' });
+    }
+    bank.balance -= parseFloat(amount);
+    await bank.save();
+    transaction.bankName = bank.bankName;
+  } else if (lowerCasePaymentMethod === 'cheque') {
+    if (!chequeDate) {
+      return res.status(400).json({ message: 'Cheque date is required for cheque payments' });
+    }
+    transaction.chequeDate = new Date(chequeDate);
+  }
+
+  supplier.balance -= parseFloat(amount);
+  supplier.transactionHistory.push(transaction);
+
+  await supplier.save();
+
+  // Add history entry
+  await History.create({
+    user: req.user._id,
+    action: 'MINUS_BALANCE',
+    entityType: 'SUPPLIER',
+    entityId: supplier._id,
+    amount: parseFloat(amount),
+    debit: parseFloat(amount),
+    credit: 0,
+    balance: supplier.balance,
+    description: `Subtracted balance for supplier ${supplier.name}`,
+  });
+
+  return res.status(200).json({ message: 'Balance subtracted successfully', supplier });
 };
 
 // Delete a supplier

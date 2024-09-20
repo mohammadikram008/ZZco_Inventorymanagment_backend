@@ -17,6 +17,7 @@ const supplierRoutes = require("./routes/supplierRoutes");
 const warehouseRoute = require("./routes/WarehouseRoutes");
 const expenseRoutes = require("./routes/addExpensesRoutes"); // Import expense routes
 const errorHandler = require("./middleWare/errorMiddleware");
+const historyRoutes = require('./routes/historyRoute');
 
 const app = express();
 
@@ -45,7 +46,7 @@ app.use("/api/expenses", expenseRoutes);
 app.use("/api/warehouses", warehouseRoute);
 app.use('/api/cheques',chequeRoutes); // Add this line
 app.use('/api/suppliers', supplierRoutes);
-
+app.use('/api/history', historyRoutes);
 // Home Route
 app.get("/", (req, res) => {
   res.send("Home Page");

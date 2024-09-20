@@ -66,8 +66,19 @@ const productSchema = mongoose.Schema(
     warehouse: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Warehouse",
-      required: function() { return this.shippingType === "local"; }, // Required only for local shipping
+      // required: [true, "Please select a warehouse"],
     },
+    warehouseStock: [{
+      warehouse: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Warehouse",
+        // required: true,
+      },
+      quantity: {
+        type: Number,
+        default: 0,
+      },
+    }],
     status: {
       type: Boolean,
       default: false,
