@@ -17,36 +17,28 @@ const generateToken = (id) => {
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
-
-  // Validation
+  // Validation checks
   if (!name || !email || !password) {
     res.status(400);
     throw new Error("Please fill in all required fields");
   }
   if (password.length < 6) {
     res.status(400);
-    throw new Error("Password must be up to 6 characters");
+    throw new Error("Password must be at least 6 characters");
   }
 
-  // Check if user email already exists
+  // Check if user email is already registered
   const userExists = await User.findOne({ email });
-
   if (userExists) {
     res.status(400);
-    throw new Error("Email has already been registered");
+    throw new Error("Email already registered");
   }
 
-  // Create new user
-  const user = await User.create({
-    name,
-    email,
-    password,
-  });
-
-  //   Generate Token
+  // Create user and generate token
+  const user = await User.create({ name, email, password });
   const token = generateToken(user._id);
 
-  // Send HTTP-only cookie
+  // Send token in a secure HTTP-only cookie
   res.cookie("token", token, {
     path: "/",
     httpOnly: true,
@@ -56,16 +48,8 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (user) {
-    const { _id, name, email, photo, phone, bio } = user;
-    res.status(201).json({
-      _id,
-      name,
-      email,
-      photo,
-      phone,
-      bio,
-      token,
-    });
+    const { _id, name, email } = user;
+    res.status(201).json({ _id, name, email, token });
   } else {
     res.status(400);
     throw new Error("Invalid user data");
@@ -76,66 +60,36 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // Validate Request
-  if (!email || !password) {
-    res.status(400);
-    throw new Error("Please add email and password");
-  }
-
-  // Check if user exists
   const user = await User.findOne({ email });
-
   if (!user) {
     res.status(400);
     throw new Error("User not found, please signup");
   }
 
-  // User exists, check if password is correct
   const passwordIsCorrect = await bcrypt.compare(password, user.password);
-
-  //   Generate Token
-  const token = generateToken(user._id);
-  
-  if(passwordIsCorrect){
-   // Send HTTP-only cookie
-  res.cookie("token", token, {
-    path: "/",
-    httpOnly: true,
-    expires: new Date(Date.now() + 1000 * 86400), // 1 day
-    sameSite: "none",
-    secure: true,
-  });
-}
-  if (user && passwordIsCorrect) {
-    const { _id, name, email, photo, phone, bio,UserRole } = user;
-    res.status(200).json({
-      _id,
-      name,
-      email,
-      photo,
-      phone,
-      bio,
-      UserRole,
-      token,
-    });
-  } else {
+  if (!passwordIsCorrect) {
     res.status(400);
     throw new Error("Invalid email or password");
   }
+
+  const token = generateToken(user._id);
+  res.cookie("token", token, {
+    path: "/",
+    httpOnly: true,
+    expires: new Date(Date.now() + 1000 * 86400),
+    sameSite: "none",
+    secure: true,
+  });
+
+  res.status(200).json({ _id: user._id, name: user.name, email: user.email, UserRole: user.UserRole, token });
 });
+
+
 
 
 ///loginCustomer
 const loginCustomer = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-
-  // Validate Request
-  if (!email || !password) {
-    res.status(400);
-    throw new Error("Please add email and password");
-  }
-
-  // Check if user exists
   const user = await Customer.findOne({ email });
 
   if (!user) {
@@ -144,28 +98,16 @@ const loginCustomer = asyncHandler(async (req, res) => {
   }
 
   if (password === user.password) {
-    // Generate Token
     const token = generateToken(user._id);
-    
-    // Send HTTP-only cookie
     res.cookie("token", token, {
       path: "/",
       httpOnly: true,
-      expires: new Date(Date.now() + 1000 * 86400), // 1 day
+      expires: new Date(Date.now() + 1000 * 86400),
       sameSite: "none",
       secure: true,
     });
 
-    // Send user data with token
-    const { _id, name, email, phone, UserRole } = user;
-    res.status(200).json({
-      _id,
-      name,
-      email,
-      phone,
-      UserRole,
-      token,
-    });
+    res.status(200).json({ _id, name, email, phone, UserRole: user.UserRole, token });
   } else {
     res.status(400);
     throw new Error("Invalid email or password");
@@ -173,54 +115,40 @@ const loginCustomer = asyncHandler(async (req, res) => {
 });
 
 
-//loginManager
+ 
+
+// Login Manager with password verification
 const loginManager = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  const manager = await Manager.findOne({ email });
 
-  // Validate Request
-  if (!email || !password) {
-    res.status(400);
-    throw new Error("Please add email and password");
-  }
-
-  // Check if user exists
-  const user = await Manager.findOne({ email });
-
-  if (!user) {
-    res.status(400);
-    throw new Error("User not found, please signup");
-  }
-
-  // User exists, check if password is correct
-  // const passwordIsCorrect = await bcrypt.compare(password, user.password);
-  if (password === user.password) {
-    // Generate Token
-    const token = generateToken(user._id);
-    
-    // Send HTTP-only cookie
-    res.cookie("token", token, {
-      path: "/",
-      httpOnly: true,
-      expires: new Date(Date.now() + 1000 * 86400), // 1 day
-      sameSite: "none",
-      secure: true,
-    });
-
-    // Send user data with token
-    const { _id, name, email, phone, UserRole } = user;
-    res.status(200).json({
-      _id,
-      name,
-      email,
-      phone,
-      UserRole,
-      token,
-    });
-  } else {
-    res.status(400);
+  if (!manager || password !== manager.password) {
+    res.status(401);
     throw new Error("Invalid email or password");
   }
+
+  const token = generateToken(manager._id);
+  res.cookie("token", token, {
+    path: "/",
+    httpOnly: true,
+    expires: new Date(Date.now() + 1000 * 86400),
+    sameSite: "none",
+    secure: true,
+  });
+
+  res.status(200).json({
+    _id: manager._id,
+    email: manager.email,
+    phone: manager.phone,
+    UserRole: manager.UserRole,
+    token,
+  });
 });
+
+
+
+
+module.exports = { loginManager };
 
 // Logout User
 const logout = asyncHandler(async (req, res) => {
@@ -411,6 +339,30 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.status(200).json({
     message: "Password Reset Successful, Please Login",
   });
+});
+
+const registerManager = asyncHandler(async (req, res) => {
+  const { name, email, password, phone } = req.body;
+
+  if (!name || !email || !password) {
+    res.status(400);
+    throw new Error("All fields are required");
+  }
+
+  const managerExists = await Manager.findOne({ email });
+  if (managerExists) {
+    res.status(400);
+    throw new Error("Manager already exists");
+  }
+
+  const manager = await Manager.create({ name, email, password, phone });
+  if (manager) {
+    const { _id, name, email } = manager;
+    res.status(201).json({ _id, name, email });
+  } else {
+    res.status(400);
+    throw new Error("Invalid manager data");
+  }
 });
 
 module.exports = {

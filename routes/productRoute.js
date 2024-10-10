@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const protect = require('../middleWare/authMiddleware');
+const protect = require('../middleware/authMiddleware');
+const checkPrivileges = require('../middleWare/checkPrivileges'); // Import privilege-checking middleware
 const {
     createProduct,
     getProducts,
     getProduct,
     deleteProduct,
     updateProduct,
-    // receiveProduct,
     updateReceivedQuantity
 } = require('../controllers/productController');
 const upload = require('../utils/fileUpload'); // Updated import to use Multer
@@ -17,8 +17,11 @@ router.post('/', protect, upload.single('image'), createProduct);
 router.patch('/:id', protect, upload.single('image'), updateProduct);
 router.get('/', protect, getProducts);
 router.get('/:id', protect, getProduct);
-router.delete('/:id', protect, deleteProduct);
-// router.patch('/receive/:id', protect, receiveProduct);
+
+// Route to delete a product with privilege check
+router.delete('/:id', protect, checkPrivileges("deleteProduct"), deleteProduct);
+
+// Route to update received quantity
 router.patch('/receive/:id', protect, updateReceivedQuantity);
 
 module.exports = router;

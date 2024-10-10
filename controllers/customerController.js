@@ -90,52 +90,50 @@ const GetAllCustomer = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // Validate Request
+  // Validate request body
   if (!email || !password) {
     res.status(400);
     throw new Error("Please add email and password");
   }
 
-  // Check if user exists
-  const user = await CustomerUser.findOne({ email });
+  // Try finding the user in both Manager and CustomerUser collections
+  let user = await Manager.findOne({ email }) || await CustomerUser.findOne({ email });
 
   if (!user) {
     res.status(400);
-    throw new Error("User not found, please signup");
+    throw new Error("User not found. Please contact admin.");
   }
 
-  // User exists, check if password is correct
-  const passwordIsCorrect = await bcrypt.compare(password, user.password);
-
-  //   Generate Token
-  const token = generateToken(user._id);
-
-  if (passwordIsCorrect) {
-    // Send HTTP-only cookie
-    res.cookie("token", token, {
-      path: "/",
-      httpOnly: true,
-      expires: new Date(Date.now() + 1000 * 86400), // 1 day
-      sameSite: "none",
-      secure: true,
-    });
-  }
-  if (user && passwordIsCorrect) {
-    const { _id, name, email, photo, phone, bio } = user;
-    res.status(200).json({
-      _id,
-      name,
-      email,
-      photo,
-      phone,
-      bio,
-      token,
-    });
-  } else {
+  // Temporarily disable bcrypt for password checking, assuming plain text passwords
+  if (user.password !== password) {
     res.status(400);
     throw new Error("Invalid email or password");
   }
+
+  // Generate token
+  const token = generateToken(user._id);
+
+  // Send HTTP-only cookie
+  res.cookie("token", token, {
+    path: "/",
+    httpOnly: true,
+    expires: new Date(Date.now() + 1000 * 86400), // 1 day
+    sameSite: "none",
+    secure: true,
+  });
+
+  const { _id, name, email: userEmail, photo, phone, bio } = user; // Avoid re-declaration by renaming destructured variable
+  res.status(200).json({
+    _id,
+    name,
+    email: userEmail,
+    photo,
+    phone,
+    bio,
+    token,
+  });
 });
+
 
 // Logout User
 const logout = asyncHandler(async (req, res) => {

@@ -8,7 +8,8 @@ const {
   deleteUser,
   getTransactionHistory,
 } = require("../controllers/customerController");
-const protect = require("../middleWare/authMiddleware");
+const protect = require("../middleware/authMiddleware");
+const checkPrivileges = require("../middleWare/checkPrivileges"); // As per your specified path
 
 // Multer for handling file uploads
 const multer = require("multer");
@@ -18,7 +19,7 @@ const upload = multer({
 });
 
 // Customer registration should not be protected
-router.post("/customerResgister", registerCustomer);
+router.post("/customerRegister", registerCustomer);
 
 // Protected routes
 router.get("/allcustomer", protect, GetAllCustomer);
@@ -27,11 +28,10 @@ router.get("/allcustomer", protect, GetAllCustomer);
 router.post("/add-customer-balance/:id", protect, upload.single("image"), addBalance);
 router.post("/minus-customer-balance/:id", protect, upload.single("image"), minusBalance);
 
+// Updated delete route for customer with privilege check
+router.delete("/delete-customer/:id", protect, checkPrivileges("deleteCustomer"), deleteUser);
 
-// Other customer-related routes
-// Updated delete route for customer
-router.delete("/delete-customer/:id", protect, deleteUser);
-
+// Route for transaction history
 router.get("/transactionHistory/:id", protect, getTransactionHistory);
 
 module.exports = router;

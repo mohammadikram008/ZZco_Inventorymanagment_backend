@@ -1,29 +1,26 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
 
 const ManagerSchema = mongoose.Schema(
   {
     username: {
       type: String,
-      required: [true, "Please add a User name"],
+      required: [true, "Please add a username"],
     },
     email: {
       type: String,
-      required: [true, "Please add a email"],
+      required: [true, "Please add an email"],
       unique: true,
       trim: true,
       match: [
         /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
-        "Please enter a valid emaial",
+        "Please enter a valid email",
       ],
     },
     password: {
       type: String,
       required: [true, "Please add a password"],
-      minLength: [6, "Password must be up to 6 characters"],
-      //   maxLength: [23, "Password must not be more than 23 characters"],
+      minLength: [6, "Password must be at least 6 characters"],
     },
-  
     phone: {
       type: String,
       default: "+92",
@@ -32,29 +29,19 @@ const ManagerSchema = mongoose.Schema(
       type: String,
       default: "Manager",
     },
-    // bio: {
-    //   type: String,
-    //   maxLength: [250, "Bio must not be more than 250 characters"],
-    //   default: "bio",
-    // },
+    privileges: {
+      deleteCustomer: { type: Boolean, default: false },
+      deleteSupplier: { type: Boolean, default: false },
+      deleteBank: { type: Boolean, default: false },
+      deleteProduct: { type: Boolean, default: false },
+      deleteCheque: { type: Boolean, default: false },
+      deleteWarehouse: { type: Boolean, default: false },
+    },
   },
   {
     timestamps: true,
   }
 );
 
-//   Encrypt password before saving to DB
-// userSchema.pre("save", async function (next) {
-//   if (!this.isModified("password")) {
-//     return next();
-//   }
-
-//   // Hash password
-//   const salt = await bcrypt.genSalt(10);
-//   const hashedPassword = await bcrypt.hash(this.password, salt);
-//   this.password = hashedPassword;
-//   next();
-// });
-
-const manager = mongoose.model("Managers", ManagerSchema);
-module.exports = manager;
+const Manager = mongoose.model("Manager", ManagerSchema);
+module.exports = Manager;

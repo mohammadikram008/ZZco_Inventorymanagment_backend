@@ -1,19 +1,19 @@
-// routes/bankRoutes.js
-
 const express = require("express");
 const router = express.Router();
 const { addBank, getAllBanks, deleteBank, updateBank } = require("../controllers/bankController");
+const protect = require("../middleware/authMiddleware"); // Use lowercase 'middleware'
+const checkPrivileges = require("../middleWare/checkPrivileges"); // Use lowercase 'middleware'
 
-// Route to add a new bank
-router.post("/add", addBank);
+// Route to add a new bank (requires authentication)
+router.post("/add", protect, addBank);
 
-// Route to get all banks
-router.get("/all", getAllBanks);
+// Route to get all banks (requires authentication)
+router.get("/all", protect, getAllBanks);
 
+// Route to delete a bank (requires authentication and delete privilege)
+router.delete("/delete/:id", protect, checkPrivileges("deleteBank"), deleteBank);
 
-// Delete a bank
-router.delete("/delete/:id", deleteBank);
+// Route to update a bank (requires authentication)
+router.put("/update/:id", protect, updateBank);
 
-// Update a bank
-router.put('/update/:id', updateBank);
 module.exports = router;
