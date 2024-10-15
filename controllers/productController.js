@@ -184,71 +184,98 @@ const deleteProduct = asyncHandler(async (req, res) => {
 
 // Update Product Controller for shipping and stock management
 const updateProduct = asyncHandler(async (req, res) => {
-  const { name, category, quantity, price, paymentMethod, shippingType, status, totalShipped, receivedQuantity } = req.body;
+  console.log("Request Body for Update:", req.body); // Log the complete request body for debugging
+
+  const {
+    name,
+    category,
+    quantity,
+    price,
+    paymentMethod,
+    shippingType,
+    status,
+    totalShipped,
+    receivedQuantity,
+    warehouse,
+    chequeDate,
+    bank,
+  } = req.body;
+
+  // Log each individual field
+  console.log("Name:", name);
+  console.log("Category:", category);
+  console.log("Quantity:", quantity);
+  console.log("Price:", price);
+  console.log("Payment Method:", paymentMethod);
+  console.log("Shipping Type:", shippingType);
+  console.log("Warehouse:", warehouse);
+  console.log("Cheque Date:", chequeDate);
+  console.log("Bank:", bank);
+  console.log("Supplier:", req.body.supplier); // Check for supplier if it's required
+
+  // Check if product exists
   const { id } = req.params;
-
   const product = await Product.findById(id);
-
-  // if product doesn't exist
   if (!product) {
     res.status(404);
     throw new Error("Product not found");
   }
 
-  // Match product to its user
+  // Authorization check
   if (product.user.toString() !== req.user.id) {
     res.status(401);
     throw new Error("User not authorized");
   }
 
-  // Validation for required fields
+  // Required fields validation
   if (!name || !category || !quantity || !price || !paymentMethod || !shippingType) {
+    console.log("Missing required field(s)");
     res.status(400);
     throw new Error("Please fill in all required fields");
   }
 
-  // Handle updating shipping quantities
-  let newTotalShipped = totalShipped || product.totalShipped;
-  let newReceivedQuantity = receivedQuantity || product.receivedQuantity;
-
-  if (newReceivedQuantity > newTotalShipped) {
+  // Conditional field validation
+  if (shippingType === "local" && !warehouse) {
+    console.log("Warehouse is required for local shipping");
     res.status(400);
-    throw new Error("Received quantity cannot exceed total shipped products.");
+    throw new Error("Warehouse is required for local shipping.");
   }
-  const totalAmount = price * quantity;
+  if (paymentMethod === "cheque" && !chequeDate) {
+    console.log("Cheque date is required for cheque payments");
+    res.status(400);
+    throw new Error("Cheque date is required for cheque payments.");
+  }
+  if (paymentMethod === "online" && !bank) {
+    console.log("Bank is required for online payments");
+    res.status(400);
+    throw new Error("Bank is required for online payments.");
+  }
 
-  // Update Product details
+  // Updating the product
   const updatedProduct = await Product.findByIdAndUpdate(
-    { _id: id },
+    id,
     {
       name,
       category,
       quantity,
-      price,
+      price: parseFloat(price),
       paymentMethod,
       shippingType,
       status,
-      totalShipped: newTotalShipped, // Update total shipped quantity
-      receivedQuantity: newReceivedQuantity, // Update received quantity
+      warehouse: shippingType === "local" ? warehouse : undefined,
+      chequeDate: paymentMethod === "cheque" ? chequeDate : undefined,
+      bank: paymentMethod === "online" ? bank : undefined,
+      totalShipped: totalShipped || product.totalShipped,
+      receivedQuantity: receivedQuantity || product.receivedQuantity,
     },
-    {
-      new: true,
-      runValidators: true,
-    }
+    { new: true, runValidators: true }
   );
-  await History.create({
-    user: req.user._id,
-    action: 'UPDATE_PRODUCT',
-    entityType: 'PRODUCT',
-    entityId: updatedProduct._id,
-    amount: totalAmount,
-    debit: 0,
-    credit: 0,
-    balance: 0, // You may want to update this based on your business logic
-  });
 
   res.status(200).json(updatedProduct);
 });
+
+
+
 
 // Controller to handle product receiving
 // const receiveProduct = asyncHandler(async (req, res) => {
