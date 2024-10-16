@@ -57,6 +57,7 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 // Login User
+// Login User
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -81,8 +82,18 @@ const loginUser = asyncHandler(async (req, res) => {
     secure: true,
   });
 
-  res.status(200).json({ _id: user._id, name: user.name, email: user.email, UserRole: user.UserRole, token });
+  res.status(200).json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,  // Changed to 'role'
+    token,
+  });
 });
+
+// Similarly, update loginCustomer and loginManager functions to use `role` instead of `UserRole`
+
+
 
 
 
@@ -107,7 +118,15 @@ const loginCustomer = asyncHandler(async (req, res) => {
       secure: true,
     });
 
-    res.status(200).json({ _id, name, email, phone, UserRole: user.UserRole, token });
+    // Include `UserRole` in the response
+    res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      UserRole: user.UserRole, // Include UserRole here
+      token
+    });
   } else {
     res.status(400);
     throw new Error("Invalid email or password");
@@ -115,35 +134,45 @@ const loginCustomer = asyncHandler(async (req, res) => {
 });
 
 
+
  
 
 // Login Manager with password verification
 const loginManager = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  
+  // Find the manager by email
   const manager = await Manager.findOne({ email });
 
-  if (!manager || password !== manager.password) {
+  // Check if manager exists and verify password with bcrypt
+  if (!manager || !(await bcrypt.compare(password, manager.password))) {
     res.status(401);
     throw new Error("Invalid email or password");
   }
 
+  // Generate token
   const token = generateToken(manager._id);
+
+  // Set token as an HTTP-only cookie
   res.cookie("token", token, {
     path: "/",
     httpOnly: true,
-    expires: new Date(Date.now() + 1000 * 86400),
+    expires: new Date(Date.now() + 1000 * 86400), // 1 day
     sameSite: "none",
     secure: true,
   });
 
+  // Include `role` in the response instead of `UserRole`
   res.status(200).json({
     _id: manager._id,
     email: manager.email,
     phone: manager.phone,
-    UserRole: manager.UserRole,
+    role: manager.role, // Make sure `role` is defined in your schema
     token,
   });
 });
+
+
 
 
 

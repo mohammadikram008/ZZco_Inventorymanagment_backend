@@ -24,13 +24,21 @@ const protect = asyncHandler(async (req, res, next) => {
     console.log("Decoded token:", decoded); // Debug: Log token content
 
     // Find user in either User or Manager collections based on decoded ID
-    const user = await User.findById(decoded.id).select("-password") || await Manager.findById(decoded.id).select("-password");
+    let user = await User.findById(decoded.id).select("-password");
+    if (user) {
+      user.role = "admin"; // Assign admin role if found in User collection
+    } else {
+      user = await Manager.findById(decoded.id).select("-password");
+      if (user) {
+        user.role = "manager"; // Assign manager role if found in Manager collection
+      }
+    }
 
     if (!user) {
       return res.status(401).json({ message: "User not found, unauthorized" });
     }
 
-    // Attach user or manager to request and proceed
+    // Attach user with role to request and proceed
     req.user = user;
     next();
   } catch (error) {

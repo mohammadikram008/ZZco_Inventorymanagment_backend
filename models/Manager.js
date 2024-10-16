@@ -25,7 +25,7 @@ const ManagerSchema = mongoose.Schema(
       type: String,
       default: "+92",
     },
-    UserRole: {
+    role: {
       type: String,
       default: "Manager",
     },

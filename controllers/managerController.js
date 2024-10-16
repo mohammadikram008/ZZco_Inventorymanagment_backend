@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Manager = require("../models/Manager");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
 // Register Manager
 const registerManager = asyncHandler(async (req, res) => {

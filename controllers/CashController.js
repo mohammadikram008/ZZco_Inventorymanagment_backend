@@ -100,14 +100,27 @@ const updateCash = asyncHandler(async (req, res) => {
     throw new Error("Cash entry not found");
   }
 
-  // Update the cash entry
-  cash.balance = balance;
+  // Check if balance update is possible based on type
+  if (type === "deduct") {
+    // Ensure the deduction does not take the balance below zero
+    if (cash.balance < Math.abs(balance)) {
+      res.status(400);
+      throw new Error("Insufficient balance for deduction");
+    }
+    // Deduct the balance
+    cash.balance -= Math.abs(balance);
+  } else if (type === "add") {
+    // Add the balance for "add" type
+    cash.balance += Math.abs(balance);
+  }
+
   cash.type = type;
 
   await cash.save();
 
   res.status(200).json({ message: "Cash entry updated successfully", cash });
 });
+
 
 
 
