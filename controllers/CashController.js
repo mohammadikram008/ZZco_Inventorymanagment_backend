@@ -5,12 +5,12 @@ const Cash = require("../models/Cash"); // Correctly import the Bank model
 
 // Add a new bank
 const addCash = asyncHandler(async (req, res) => {
-  const { balance } = req.body;
-  const type = "add";
+  const { balance, type } = req.body; // Accept type from the request body
+
   // Validation
-  if (balance === undefined) {
+  if (balance === undefined || (type !== 'add' && type !== 'deduct')) {
     res.status(400);
-    throw new Error("Please provide Balance and Type (add/deduct)");
+    throw new Error("Please provide both balance and a valid type (add/deduct)");
   }
 
   // Get the latest total balance
@@ -19,26 +19,26 @@ const addCash = asyncHandler(async (req, res) => {
   if (latestCash && latestCash.totalBalance !== undefined) {
     currentTotalBalance = latestCash.totalBalance;
   }
+
   // Ensure balance is a number
   const numericBalance = Number(balance);
   if (isNaN(numericBalance)) {
     throw new Error("Balance must be a valid number");
   }
 
-  // Calculate new total balance
+  // Calculate new total balance based on type
   let newTotalBalance;
   if (type === 'add') {
     newTotalBalance = currentTotalBalance + numericBalance;
   } else if (type === 'deduct') {
     newTotalBalance = currentTotalBalance - numericBalance;
-  } else {
-    throw new Error("Invalid type. Must be 'add' or 'deduct'");
   }
-  console.log("New total balance:", newTotalBalance);
 
-  // Create a new cash entry
+  console.log("New total balance:", newTotalBalance); // Debugging log
+
+  // Create a new cash entry with type and calculated balance
   const cash = await Cash.create({
-    balance,
+    balance: numericBalance,
     totalBalance: newTotalBalance,
     type,
   });
@@ -50,6 +50,7 @@ const addCash = asyncHandler(async (req, res) => {
     throw new Error("Invalid Cash data");
   }
 });
+
 
 
 // Get all banks

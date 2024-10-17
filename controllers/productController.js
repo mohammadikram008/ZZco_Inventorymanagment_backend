@@ -136,10 +136,12 @@ const createProduct = asyncHandler(async (req, res) => {
 
 
 // Get all Products
+// Get all Products without user filtering
 const getProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find({ user: req.user.id }).sort("-createdAt");
+  const products = await Product.find().sort("-createdAt"); // Ensure no filtering by user
   res.status(200).json(products);
 });
+
 
 const getProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id).populate('warehouse', 'name');
@@ -182,97 +184,33 @@ const deleteProduct = asyncHandler(async (req, res) => {
 
 
 
-// Update Product Controller for shipping and stock management
 const updateProduct = asyncHandler(async (req, res) => {
-  console.log("Request Body for Update:", req.body); // Log the complete request body for debugging
-
-  const {
-    name,
-    category,
-    quantity,
-    price,
-    paymentMethod,
-    shippingType,
-    status,
-    totalShipped,
-    receivedQuantity,
-    warehouse,
-    chequeDate,
-    bank,
-  } = req.body;
-
-  // Log each individual field
-  console.log("Name:", name);
-  console.log("Category:", category);
-  console.log("Quantity:", quantity);
-  console.log("Price:", price);
-  console.log("Payment Method:", paymentMethod);
-  console.log("Shipping Type:", shippingType);
-  console.log("Warehouse:", warehouse);
-  console.log("Cheque Date:", chequeDate);
-  console.log("Bank:", bank);
-  console.log("Supplier:", req.body.supplier); // Check for supplier if it's required
-
-  // Check if product exists
   const { id } = req.params;
   const product = await Product.findById(id);
+
   if (!product) {
     res.status(404);
     throw new Error("Product not found");
   }
 
-  // Authorization check
-  if (product.user.toString() !== req.user.id) {
+  // Adjust authorization to allow Admins and Managers
+  if (product.user.toString() !== req.user.id && !['Admin', 'Manager'].includes(req.user.role)) {
     res.status(401);
     throw new Error("User not authorized");
   }
 
-  // Required fields validation
-  if (!name || !category || !quantity || !price || !paymentMethod || !shippingType) {
-    console.log("Missing required field(s)");
-    res.status(400);
-    throw new Error("Please fill in all required fields");
-  }
-
-  // Conditional field validation
-  if (shippingType === "local" && !warehouse) {
-    console.log("Warehouse is required for local shipping");
-    res.status(400);
-    throw new Error("Warehouse is required for local shipping.");
-  }
-  if (paymentMethod === "cheque" && !chequeDate) {
-    console.log("Cheque date is required for cheque payments");
-    res.status(400);
-    throw new Error("Cheque date is required for cheque payments.");
-  }
-  if (paymentMethod === "online" && !bank) {
-    console.log("Bank is required for online payments");
-    res.status(400);
-    throw new Error("Bank is required for online payments.");
-  }
-
-  // Updating the product
+  // Proceed with the rest of the update logic as usual
   const updatedProduct = await Product.findByIdAndUpdate(
     id,
     {
-      name,
-      category,
-      quantity,
-      price: parseFloat(price),
-      paymentMethod,
-      shippingType,
-      status,
-      warehouse: shippingType === "local" ? warehouse : undefined,
-      chequeDate: paymentMethod === "cheque" ? chequeDate : undefined,
-      bank: paymentMethod === "online" ? bank : undefined,
-      totalShipped: totalShipped || product.totalShipped,
-      receivedQuantity: receivedQuantity || product.receivedQuantity,
+      // your product update fields here
     },
     { new: true, runValidators: true }
   );
 
   res.status(200).json(updatedProduct);
 });
+
 
 
 

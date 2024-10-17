@@ -31,11 +31,7 @@ exports.addTransaction = async (req, res) => {
       return res.status(404).json({ message: "Supplier not found" });
     }
 
-    // Log request body and file for debugging
-    console.log("Request Body:", req.body);
-    console.log("Uploaded File:", req.file);
-
-    const { amount, paymentMethod, chequeDate, description, bankId } = req.body;
+    const { amount, paymentMethod, chequeDate, description, bankId, type = 'credit' } = req.body;
 
     if (!paymentMethod) {
       return res.status(400).json({ message: "Payment method is required" });
@@ -46,53 +42,51 @@ exports.addTransaction = async (req, res) => {
       paymentMethod: paymentMethod.toLowerCase(),
       chequeDate,
       description,
-      type: 'credit',
+      type: type.toLowerCase(), // Use provided type or default to 'credit'
     };
-    console.log("Transaction data:", transaction);
 
     if (req.file) {
       transaction.image = req.file;  // Save the uploaded file if available
     }
 
     if (paymentMethod.toLowerCase() === 'online') {
-      // Validate bankId
       if (!bankId) {
         return res.status(400).json({ message: "Bank ID is required for online payments" });
       }
-
-      // Fetch the bank details
       const bank = await Bank.findById(bankId);
       if (!bank) {
         return res.status(404).json({ message: "Bank not found" });
       }
-
-      // Add bank name to the transaction
       transaction.bankName = bank.bankName;
     }
 
-    // Add the transaction to the supplier and update balance
-    supplier.transactionHistory.push(transaction);
-    supplier.balance += parseFloat(amount);
+    // Update balance based on transaction type
+    supplier.balance += transaction.type === 'debit' ? -parseFloat(amount) : parseFloat(amount);
 
-    // Save the supplier with updated balance and transaction history
+    // Save transaction
+    supplier.transactionHistory.push(transaction);
     await supplier.save();
+
+    // Save to History
     await History.create({
       user: req.user._id,
-      action: 'ADD_SUPPLIER_TRANSACTION',
+      action: transaction.type === 'debit' ? 'MINUS_SUPPLIER_BALANCE' : 'ADD_SUPPLIER_TRANSACTION',
       entityType: 'SUPPLIER',
       entityId: supplier._id,
       amount: parseFloat(amount),
       debit: transaction.type === 'debit' ? parseFloat(amount) : 0,
       credit: transaction.type === 'credit' ? parseFloat(amount) : 0,
       balance: supplier.balance,
-      description: `Added ${transaction.type} transaction for supplier ${supplier.name}`,
+      description: `${transaction.type === 'debit' ? 'Subtracted' : 'Added'} ${transaction.type} transaction for supplier ${supplier.name}`,
     });
+
     res.status(201).json({ message: "Transaction added successfully", supplier });
   } catch (error) {
     console.error("Error adding transaction:", error);
     res.status(400).json({ message: error.message });
   }
 };
+
 
 // Get transaction history for a supplier
 exports.getTransactionHistory = async (req, res) => {
@@ -109,69 +103,66 @@ exports.getTransactionHistory = async (req, res) => {
 };
 
 exports.minusBalance = async (req, res) => {
-  const { amount, paymentMethod, chequeDate, description, bankId } = req.body;
-
-  // Ensure paymentMethod is lowercase
-  const lowerCasePaymentMethod = paymentMethod.toLowerCase();
-
-  if (!amount || !paymentMethod) {
-    return res.status(400).json({ message: 'Missing required fields or invalid amount' });
-  }
-
-  const supplier = await Supplier.findById(req.params.id);
-  if (!supplier) {
-    return res.status(404).json({ message: 'Supplier not found' });
-  }
-
-  if (supplier.balance < amount) {
-    return res.status(400).json({ message: 'Insufficient balance' });
-  }
-
-  const transaction = {
-    amount: -parseFloat(amount),  // Negative for debit
-    paymentMethod: lowerCasePaymentMethod,
-    description,
-    date: new Date(),
-    type: 'debit',
-  };
-
-  if (lowerCasePaymentMethod === 'online') {
-    if (!bankId) {
-      return res.status(400).json({ message: 'Bank ID is required for online payments' });
+  try {
+    const { amount, paymentMethod, chequeDate, description, bankId } = req.body;
+    const supplier = await Supplier.findById(req.params.id);
+    if (!supplier) {
+      return res.status(404).json({ message: 'Supplier not found' });
     }
-    const bank = await Bank.findById(bankId);
-    if (!bank) {
-      return res.status(404).json({ message: 'Bank not found' });
+
+    if (supplier.balance < parseFloat(amount)) {
+      return res.status(400).json({ message: 'Insufficient balance' });
     }
-    bank.balance -= parseFloat(amount);
-    await bank.save();
-    transaction.bankName = bank.bankName;
-  } else if (lowerCasePaymentMethod === 'cheque') {
-    if (!chequeDate) {
-      return res.status(400).json({ message: 'Cheque date is required for cheque payments' });
+
+    const transaction = {
+      amount: parseFloat(amount),
+      paymentMethod: paymentMethod.toLowerCase(),
+      description,
+      date: new Date(),
+      type: 'debit',
+    };
+
+    if (paymentMethod.toLowerCase() === 'online') {
+      if (!bankId) {
+        return res.status(400).json({ message: 'Bank ID is required for online payments' });
+      }
+      const bank = await Bank.findById(bankId);
+      if (!bank) {
+        return res.status(404).json({ message: 'Bank not found' });
+      }
+      bank.balance -= parseFloat(amount);
+      await bank.save();
+      transaction.bankName = bank.bankName;
+    } else if (paymentMethod.toLowerCase() === 'cheque') {
+      if (!chequeDate) {
+        return res.status(400).json({ message: 'Cheque date is required for cheque payments' });
+      }
+      transaction.chequeDate = new Date(chequeDate);
     }
-    transaction.chequeDate = new Date(chequeDate);
+
+    // Update supplier balance and transaction history
+    supplier.balance -= parseFloat(amount);
+    supplier.transactionHistory.push(transaction);
+    await supplier.save();
+
+    // Add history entry
+    await History.create({
+      user: req.user._id,
+      action: 'MINUS_BALANCE',
+      entityType: 'SUPPLIER',
+      entityId: supplier._id,
+      amount: parseFloat(amount),
+      debit: parseFloat(amount),
+      credit: 0,
+      balance: supplier.balance,
+      description: `Subtracted balance for supplier ${supplier.name}`,
+    });
+
+    return res.status(200).json({ message: 'Balance subtracted successfully', supplier });
+  } catch (error) {
+    console.error("Error subtracting balance:", error);
+    res.status(400).json({ message: error.message });
   }
-
-  supplier.balance -= parseFloat(amount);
-  supplier.transactionHistory.push(transaction);
-
-  await supplier.save();
-
-  // Add history entry
-  await History.create({
-    user: req.user._id,
-    action: 'MINUS_BALANCE',
-    entityType: 'SUPPLIER',
-    entityId: supplier._id,
-    amount: parseFloat(amount),
-    debit: parseFloat(amount),
-    credit: 0,
-    balance: supplier.balance,
-    description: `Subtracted balance for supplier ${supplier.name}`,
-  });
-
-  return res.status(200).json({ message: 'Balance subtracted successfully', supplier });
 };
 
 // Delete a supplier
