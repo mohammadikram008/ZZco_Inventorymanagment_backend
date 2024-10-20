@@ -5,28 +5,25 @@ const Cash = require("../models/Cash"); // Correctly import the Bank model
 
 // Add a new bank
 const addCash = asyncHandler(async (req, res) => {
-  const { balance, type } = req.body; // Accept type from the request body
+  const { balance, type } = req.body;
 
-  // Validation
+  // Validation for type and balance
   if (balance === undefined || (type !== 'add' && type !== 'deduct')) {
-    res.status(400);
-    throw new Error("Please provide both balance and a valid type (add/deduct)");
+    return res.status(400).json({ message: "Please provide both balance and a valid type ('add' or 'deduct')" });
   }
 
-  // Get the latest total balance
   const latestCash = await Cash.findOne().sort({ createdAt: -1 });
   let currentTotalBalance = 0;
+  
   if (latestCash && latestCash.totalBalance !== undefined) {
     currentTotalBalance = latestCash.totalBalance;
   }
 
-  // Ensure balance is a number
   const numericBalance = Number(balance);
   if (isNaN(numericBalance)) {
     throw new Error("Balance must be a valid number");
   }
 
-  // Calculate new total balance based on type
   let newTotalBalance;
   if (type === 'add') {
     newTotalBalance = currentTotalBalance + numericBalance;
@@ -34,9 +31,6 @@ const addCash = asyncHandler(async (req, res) => {
     newTotalBalance = currentTotalBalance - numericBalance;
   }
 
-  console.log("New total balance:", newTotalBalance); // Debugging log
-
-  // Create a new cash entry with type and calculated balance
   const cash = await Cash.create({
     balance: numericBalance,
     totalBalance: newTotalBalance,
@@ -44,12 +38,14 @@ const addCash = asyncHandler(async (req, res) => {
   });
 
   if (cash) {
-    res.status(201).json({ message: "Cash added successfully", cash });
+    res.status(201).json({ message: "Cash entry created successfully", cash });
   } else {
-    res.status(400);
-    throw new Error("Invalid Cash data");
+    res.status(400).json({ message: "Error creating cash entry" });
   }
 });
+
+
+
 
 
 
