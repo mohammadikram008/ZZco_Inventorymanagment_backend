@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { addBank, getAllBanks, deleteBank, updateBank } = require("../controllers/bankController");
-const protect = require("../middleware/authMiddleware"); // Use lowercase 'middleware'
+const protect = require("../middleWare/authMiddleware"); // Use lowercase 'middleware'
 const checkPrivileges = require("../middleWare/checkPrivileges"); // Use lowercase 'middleware'
 
 // Route to add a new bank (requires authentication)
