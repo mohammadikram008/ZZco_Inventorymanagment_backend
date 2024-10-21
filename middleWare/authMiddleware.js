@@ -1,34 +1,57 @@
 const asyncHandler = require("express-async-handler");
 const User = require("../models/userModel");
+const Manager = require("../models/Manager"); // Import Manager model
 const jwt = require("jsonwebtoken");
 
 const protect = asyncHandler(async (req, res, next) => {
   try {
-    const token = req.cookies.token;
-    console.log("Token from cookies:", token); // Debug log
+    // Retrieve token from cookies or Authorization header
+    const token = req.cookies.token || (req.headers.authorization && req.headers.authorization.split(" ")[1]);
 
     if (!token) {
-      res.status(401);
-      throw new Error("Not authorized, please login");
+      // If no token is found, respond with an authorization error
+      return res.status(401).json({ message: "Not authorized, please login" });
     }
 
-    // Verify Token
-    const verified = jwt.verify(token, process.env.JWT_SECRET);
+    // Check if JWT_SECRET is defined
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is not defined");
+      return res.status(500).json({ message: "Internal server error, missing configuration" });
+    }
 
-    // Get user id from token
-    const user = await User.findById(verified.id).select("-password");
+    // Decode and verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("Decoded token:", decoded); // Debug: Log token content
+
+    // Find user in either User or Manager collections based on decoded ID
+    let user = await User.findById(decoded.id).select("-password");
+    if (user) {
+      user.role = "admin"; // Assign admin role if found in User collection
+    } else {
+      user = await Manager.findById(decoded.id).select("-password");
+      if (user) {
+        user.role = "manager"; // Assign manager role if found in Manager collection
+      }
+    }
 
     if (!user) {
-      res.status(401);
-      throw new Error("User not found");
+      return res.status(401).json({ message: "User not found, unauthorized" });
     }
+
+    // Attach user with role to request and proceed
     req.user = user;
     next();
   } catch (error) {
-    console.error("Authorization error:", error); // Log the error
-    res.status(401).json({ message: "Not authorized, please login" });
+    console.error("Authorization error:", error.message); // Improved error logging
+
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Token expired, please login again" });
+    } else if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ message: "Invalid token, authorization denied" });
+    } else {
+      return res.status(401).json({ message: "Not authorized, invalid token" });
+    }
   }
 });
-
 
 module.exports = protect;

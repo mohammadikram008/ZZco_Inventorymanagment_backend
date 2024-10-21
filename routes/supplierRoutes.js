@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const protect = require("../middleWare/authMiddleware");
+const protect = require("../middleware/authMiddleware");
+const checkPrivileges = require("../middleWare/checkPrivileges"); // Import privilege-checking middleware
 
 const {
   getAllSuppliers,
@@ -31,7 +32,7 @@ router.post("/minus-supplier-balance/:id", protect, upload.single("image"), minu
 // Get transaction history for a supplier
 router.get('/:id/transaction-history', protect, getTransactionHistory);
 
-// DELETE supplier by id
-router.delete('/delete/:id', protect, deleteSupplier);
+// DELETE supplier by id (with privilege check)
+router.delete('/delete/:id', protect, checkPrivileges("deleteSupplier"), deleteSupplier);
 
 module.exports = router;

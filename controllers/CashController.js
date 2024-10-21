@@ -5,51 +5,48 @@ const Cash = require("../models/Cash"); // Correctly import the Bank model
 
 // Add a new bank
 const addCash = asyncHandler(async (req, res) => {
-  const { balance } = req.body;
-  const type = "add";
-  // Validation
-  if (balance === undefined) {
-    res.status(400);
-    throw new Error("Please provide Balance and Type (add/deduct)");
+  const { balance, type } = req.body;
+
+  // Validation for type and balance
+  if (balance === undefined || (type !== 'add' && type !== 'deduct')) {
+    return res.status(400).json({ message: "Please provide both balance and a valid type ('add' or 'deduct')" });
   }
 
-  // Get the latest total balance
   const latestCash = await Cash.findOne().sort({ createdAt: -1 });
   let currentTotalBalance = 0;
+  
   if (latestCash && latestCash.totalBalance !== undefined) {
     currentTotalBalance = latestCash.totalBalance;
   }
-  // Ensure balance is a number
+
   const numericBalance = Number(balance);
   if (isNaN(numericBalance)) {
     throw new Error("Balance must be a valid number");
   }
 
-  // Calculate new total balance
   let newTotalBalance;
   if (type === 'add') {
     newTotalBalance = currentTotalBalance + numericBalance;
   } else if (type === 'deduct') {
     newTotalBalance = currentTotalBalance - numericBalance;
-  } else {
-    throw new Error("Invalid type. Must be 'add' or 'deduct'");
   }
-  console.log("New total balance:", newTotalBalance);
 
-  // Create a new cash entry
   const cash = await Cash.create({
-    balance,
+    balance: numericBalance,
     totalBalance: newTotalBalance,
     type,
   });
 
   if (cash) {
-    res.status(201).json({ message: "Cash added successfully", cash });
+    res.status(201).json({ message: "Cash entry created successfully", cash });
   } else {
-    res.status(400);
-    throw new Error("Invalid Cash data");
+    res.status(400).json({ message: "Error creating cash entry" });
   }
 });
+
+
+
+
 
 
 // Get all banks
@@ -100,14 +97,27 @@ const updateCash = asyncHandler(async (req, res) => {
     throw new Error("Cash entry not found");
   }
 
-  // Update the cash entry
-  cash.balance = balance;
+  // Check if balance update is possible based on type
+  if (type === "deduct") {
+    // Ensure the deduction does not take the balance below zero
+    if (cash.balance < Math.abs(balance)) {
+      res.status(400);
+      throw new Error("Insufficient balance for deduction");
+    }
+    // Deduct the balance
+    cash.balance -= Math.abs(balance);
+  } else if (type === "add") {
+    // Add the balance for "add" type
+    cash.balance += Math.abs(balance);
+  }
+
   cash.type = type;
 
   await cash.save();
 
   res.status(200).json({ message: "Cash entry updated successfully", cash });
 });
+
 
 
 

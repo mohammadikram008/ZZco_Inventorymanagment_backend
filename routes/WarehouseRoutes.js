@@ -8,7 +8,7 @@ const {
   deleteWarehouse,
   getProductsByWarehouse 
 } = require("../controllers/wareHouseController");
-const protect = require("../middleWare/authMiddleware");
+const protect = require("../middleware/authMiddleware");
 
 router.post("/", protect, addWarehouse);
 router.get("/", protect, getAllWarehouses);

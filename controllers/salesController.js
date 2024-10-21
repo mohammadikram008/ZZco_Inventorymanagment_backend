@@ -85,7 +85,7 @@ const AddSale = asyncHandler(async (req, res) => {
             debit: 0,
             quantity: stockSold,
             credit: parseFloat(totalSaleAmount),
-            balance,
+            // balance,
         });
         res.status(201).json({ message: 'Sale added successfully!', sale });
     } catch (error) {
