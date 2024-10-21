@@ -8,7 +8,7 @@ const {
   deleteUser,
   getTransactionHistory,
 } = require("../controllers/customerController");
-const protect = require("../middleware/authMiddleware");
+const protect = require("../middleWare/authMiddleware");
 const checkPrivileges = require("../middleWare/checkPrivileges"); // As per your specified path
 
 // Multer for handling file uploads
