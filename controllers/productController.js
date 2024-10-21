@@ -6,8 +6,7 @@ const Bank = require('../models/Bank');
 const Cash = require('../models/Cash');
 const Supplier = require('../models/Supplier');
 const History = require('../models/history');
-
-// Create Prouct
+ 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -15,7 +14,7 @@ cloudinary.config({
 });
 
 const createProduct = asyncHandler(async (req, res) => {
-  console.log(req.body); // Log the request body to debug the incoming data
+   
 
   const { name, category, quantity, price, paymentMethod, chequeDate, bank, warehouse, shippingType, supplier, status } = req.body;
 
