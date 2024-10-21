@@ -4,7 +4,7 @@ const {
     registerManager,
     GetAllManager,
 } = require("../controllers/managerController");
-const protect = require("../middleware/authMiddleware");
+const protect = require("../middleWare/authMiddleware");
 
 // Manager registration route
 router.post("/managerRegister", registerManager);

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const protect = require('../middleware/authMiddleware');
+const protect = require('../middleWare/authMiddleware');
 const checkPrivileges = require('../middleWare/checkPrivileges'); // Import privilege-checking middleware
 const {
     createProduct,
