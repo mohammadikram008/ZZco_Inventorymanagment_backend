@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { addCash, getAllCash, getCurrentTotalBalance, updateCash, deleteCash } = require("../controllers/CashController");
-const protect = require("../middleware/authMiddleware"); // As per your specified path
+const protect = require("../middleWare/authMiddleware"); // As per your specified path
 const checkPrivileges = require("../middleWare/checkPrivileges"); // As per your specified path
 
 // Route to add a new cash entry (requires authentication)

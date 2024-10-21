@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const protect = require("../middleware/authMiddleware");
+const protect = require("../middleWare/authMiddleware");
 const checkPrivileges = require("../middleWare/checkPrivileges"); // Import privilege-checking middleware
 
 const {
