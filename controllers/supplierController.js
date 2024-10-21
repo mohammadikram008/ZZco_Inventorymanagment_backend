@@ -1,4 +1,4 @@
-const Supplier = require('../models/Supplier');
+const Supplier = require('../models/supplier');
 const Bank = require('../models/Bank');
 const History = require('../models/history');
 // Get all suppliers
