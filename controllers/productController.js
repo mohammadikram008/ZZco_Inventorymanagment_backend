@@ -4,7 +4,7 @@ const { fileSizeFormatter } = require("../utils/fileUpload");
 const cloudinary = require("cloudinary").v2;
 const Bank = require('../models/Bank');
 const Cash = require('../models/Cash');
-const Supplier = require('../models/supplier.js');
+const Supplier = require('../models/supplier');
 const History = require('../models/history');
  
 cloudinary.config({

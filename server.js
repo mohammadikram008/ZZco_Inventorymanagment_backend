@@ -27,7 +27,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(
   cors({
-    origin: ["http://localhost:3001", "https://pinvent-app.vercel.app"],
+    origin: ["http://localhost:3001", "https://zzco.netlify.app"],
     credentials: true,
   })
 );
