@@ -8,7 +8,7 @@ const checkPrivileges = require("../middleWare/checkPrivileges"); // As per your
 router.post("/add", protect, addCash);
 
 // Route to get all cash entries (requires authentication)
-router.get("/all", protect, getCurrentTotalBalance);
+router.get("/all",  getCurrentTotalBalance);
 
 // Route to update a cash entry (requires authentication)
 router.put("/update/:id", protect, updateCash);

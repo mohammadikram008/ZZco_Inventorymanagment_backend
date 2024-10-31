@@ -97,7 +97,7 @@ const AddSale = asyncHandler(async (req, res) => {
 // Get all Sales
 const GetAllSale = asyncHandler(async (req, res) => {
     try {
-        const sales = await Sale.find();
+        const sales = await Sale.find().populate('customerID', 'username').populate('productID', 'name');
         res.status(200).json(sales);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching Sales', error });

@@ -137,7 +137,8 @@ const createProduct = asyncHandler(async (req, res) => {
 // Get all Products
 // Get all Products without user filtering
 const getProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find().sort("-createdAt"); // Ensure no filtering by user
+  const products = await Product.find().populate('supplier', 'username').sort("-createdAt"); // Populate supplier details
+  console.log(products);
   res.status(200).json(products);
 });
 

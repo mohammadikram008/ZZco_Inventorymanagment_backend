@@ -27,7 +27,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(
   cors({
-    origin: ["http://localhost:3001", "https://zzco.netlify.app"],
+    origin: ["http://localhost:3001","https://zzcoinventorymanagmentbackend.up.railway.app", "https://zzco.netlify.app"],
     credentials: true,
   })
 );

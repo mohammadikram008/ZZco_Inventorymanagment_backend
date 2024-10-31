@@ -6,7 +6,7 @@ const Cash = require("../models/Cash"); // Correctly import the Bank model
 // Add a new bank
 const addCash = asyncHandler(async (req, res) => {
   const { balance, type } = req.body;
-
+console.log(body);
   // Validation for type and balance
   if (balance === undefined || (type !== 'add' && type !== 'deduct')) {
     return res.status(400).json({ message: "Please provide both balance and a valid type ('add' or 'deduct')" });
