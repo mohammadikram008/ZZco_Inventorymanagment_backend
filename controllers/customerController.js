@@ -43,7 +43,7 @@ const registerCustomer = asyncHandler(async (req, res) => {
     username,
     email,
     password: hashedPassword,
-    phone,
+    phone, 
   });
 
   // Generate Token
@@ -491,6 +491,92 @@ const getTransactionHistory = asyncHandler(async (req, res) => {
     return res.status(500).json({ message: 'Server error', error });
   }
 });
+
+const addSaleTransaction = asyncHandler(async (req, res) => {
+  const { customerId, amount, paymentMethod, saleDate } = req.body;
+
+  if (!customerId || !amount || !paymentMethod || !saleDate) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  const customer = await CustomerUser.findById(customerId);
+  if (!customer) {
+    return res.status(404).json({ message: "Customer not found" });
+  }
+
+  const transaction = {
+    amount: parseFloat(amount),
+    paymentMethod: paymentMethod.toLowerCase(),
+    date: new Date(saleDate),
+    type: "credit", // Mark as credit for sale
+    description: "Sale transaction",
+  };
+
+  // Update the customer balance (credit amount)
+  customer.balance += parseFloat(amount);
+  customer.transactionHistory.push(transaction);
+
+  // Save customer data and create history log
+  await customer.save();
+  await History.create({
+    user: req.user._id,
+    action: "SALE_TRANSACTION",
+    entityType: "CUSTOMER",
+    entityId: customer._id,
+    amount: parseFloat(amount),
+    debit: 0,
+    credit: parseFloat(amount),
+    balance: customer.balance,
+    description: `Sale transaction for customer ${customer.username}`,
+  });
+
+  return res.status(200).json({ message: "Sale transaction recorded", customer });
+});
+
+const recordSaleAndAddCredit = async (saleData) => {
+  const { customerID, totalSaleAmount, paymentMethod, saleDate } = saleData;
+
+  // Find the customer
+  const customer = await CustomerUser.findById(customerID);
+  if (!customer) {
+    throw new Error("Customer not found");
+  }
+
+  // Create a credit transaction entry for the sale
+  const transaction = {
+    amount: totalSaleAmount,
+    paymentMethod: paymentMethod.toLowerCase(),
+    date: saleDate || new Date(),
+    type: "credit",
+    description: "Sale transaction",
+  };
+
+  // Update the customer's balance and transaction history
+  customer.balance += totalSaleAmount; // Increase balance for credit
+  customer.transactionHistory.push(transaction);
+
+  // Save the customer data
+  await customer.save();
+};
+
+
+// Integrate this function in your sale creation logic:
+const createSale = async (req, res) => {
+  try {
+    const saleData = req.body;
+
+    // Your existing sale creation code...
+    
+    // Record the sale transaction in the customer's ledger
+    await recordSaleAndAddCredit(saleData);
+
+    res.status(201).json({ message: "Sale recorded and credited to customer ledger" });
+  } catch (error) {
+    res.status(500).json({ message: "Error recording sale", error });
+  }
+};
+
+
 module.exports = {
   registerCustomer,
   GetAllCustomer,
@@ -505,5 +591,8 @@ module.exports = {
   addBalance,
   minusBalance,
   deleteUser,
-  getTransactionHistory
+  getTransactionHistory,
+  addSaleTransaction,
+  createSale ,
+  recordSaleAndAddCredit ,
 };
