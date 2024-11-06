@@ -93,7 +93,7 @@ const createProduct = asyncHandler(async (req, res) => {
   let balance = 0;
 
   // Handle payment method (deducting balances)
-  if (paymentMethod === 'online') {
+  if (paymentMethod === 'online' || paymentMethod === 'cheque') {
     const bankAccount = await Bank.findById(bank);
     if (!bankAccount || bankAccount.balance < totalAmount) {
       throw new Error('Insufficient funds in the bank account.');

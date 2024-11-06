@@ -53,7 +53,7 @@ const AddSale = asyncHandler(async (req, res) => {
         await sale.save();
         const totalAmount = stockSold * totalSaleAmount;
 
-        if (paymentMethod === 'online') {
+        if (paymentMethod === 'online' || paymentMethod === 'cheque') {
             if (!bankID) {
                 throw new Error('Bank ID is required for online payments');
             }
