@@ -19,14 +19,14 @@ const registerCustomer = asyncHandler(async (req, res) => {
   const { username, email, password, phone } = req.body;
 
   // Validation
-  if (!username || !email || !password) {
+  if (!username) {
     res.status(400);
     throw new Error("Please fill in all required fields");
   }
-  if (password.length < 6) {
-    res.status(400);
-    throw new Error("Password must be at least 6 characters");
-  }
+  // if (password.length < 6) {
+  //   res.status(400);
+  //   throw new Error("Password must be at least 6 characters");
+  // }
 
   // Check if user email already exists
   const userExists = await CustomerUser.findOne({ email });
@@ -42,7 +42,7 @@ const registerCustomer = asyncHandler(async (req, res) => {
   const customer = await CustomerUser.create({
     username,
     email,
-    password: hashedPassword,
+    password: password,
     phone, 
   });
 
