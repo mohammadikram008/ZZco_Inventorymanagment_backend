@@ -1,5 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Sale = require("../models/Sale");
+const CustomerUser = require("../models/customer");
+
 const Bank = require('../models/Bank');
 const Cash = require('../models/Cash');
 const { fileSizeFormatter } = require("../utils/fileUpload");
@@ -76,6 +78,24 @@ const AddSale = asyncHandler(async (req, res) => {
                 type: 'add'
             });
         }
+        const customer = await CustomerUser.findById(customerID);
+        if (!customer) {
+          return res.status(404).json({ message: "Customer not found" });
+        }
+      
+        const transaction = {
+          amount: parseFloat(totalSaleAmount),
+          paymentMethod: paymentMethod.toLowerCase(),
+          date: new Date(saleDate),
+          type: "credit", // Mark as credit for sale
+          description: "Sale transaction",
+        };
+      
+        // Update the customer balance (credit amount)
+        customer.balance += parseFloat(totalSaleAmount);
+        console.log("transecton",transaction);
+        customer.transactionHistory.push(transaction);
+        await customer.save();
         await History.create({
             user: req.user._id,
             action: 'ADD_SALE',

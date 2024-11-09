@@ -514,9 +514,8 @@ const addSaleTransaction = asyncHandler(async (req, res) => {
 
   // Update the customer balance (credit amount)
   customer.balance += parseFloat(amount);
+  console.log("transecton",transaction);
   customer.transactionHistory.push(transaction);
-
-  // Save customer data and create history log
   await customer.save();
   await History.create({
     user: req.user._id,
