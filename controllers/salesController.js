@@ -19,7 +19,7 @@ cloudinary.config({
 const AddSale = asyncHandler(async (req, res) => {
     // Extract sale details from request body
     const { productID, customerID, stockSold, saleDate, totalSaleAmount, paymentMethod, chequeDate, bankID, warehouseID, status } = req.body;
-
+console.log("BOdy",req.body);
     // Validation
     if (!productID || !customerID || !stockSold || !saleDate || !totalSaleAmount || !paymentMethod) {
         res.status(400);
@@ -55,29 +55,7 @@ const AddSale = asyncHandler(async (req, res) => {
         await sale.save();
         const totalAmount = stockSold * totalSaleAmount;
 
-        if (paymentMethod === 'online' || paymentMethod === 'cheque') {
-            if (!bankID) {
-                throw new Error('Bank ID is required for online payments');
-            }
-            const bank = await Bank.findById(bankID);
-            if (!bank) {
-                throw new Error('Bank not found');
-            }
-            bank.balance += parseFloat(totalSaleAmount);
-            await bank.save();
-        } else if (paymentMethod === 'cash') {
-            const latestCash = await Cash.findOne().sort({ createdAt: -1 });
-            if (!latestCash) {
-                throw new Error('Cash account not found');
-            }
-            const newTotalBalance = latestCash.totalBalance + parseFloat(totalSaleAmount);
-            console.log(newTotalBalance);
-            await Cash.create({
-                balance: parseFloat(totalSaleAmount),
-                totalBalance: newTotalBalance,
-                type: 'add'
-            });
-        }
+       
         const customer = await CustomerUser.findById(customerID);
         if (!customer) {
           return res.status(404).json({ message: "Customer not found" });
@@ -96,6 +74,36 @@ const AddSale = asyncHandler(async (req, res) => {
         console.log("transecton",transaction);
         customer.transactionHistory.push(transaction);
         await customer.save();
+        if (paymentMethod === 'online' || paymentMethod === 'cheque') {
+            if (!bankID) {
+                throw new Error('Bank ID is required for online payments');
+            }
+            const bank = await Bank.findById(bankID);
+            if (!bank) {
+                throw new Error('Bank not found');
+            }
+            bank.balance += parseFloat(totalSaleAmount);
+            await bank.save();
+        } else if (paymentMethod === 'cash') {
+            const latestCash = await Cash.findOne().sort({ createdAt: -1 });
+            if (!latestCash) {
+                const newTotalBalance = parseFloat(totalSaleAmount);
+                console.log(newTotalBalance);
+                await Cash.create({
+                    balance: parseFloat(totalSaleAmount),
+                    totalBalance: newTotalBalance,
+                    type: 'add'
+                });
+            } else {
+                const newTotalBalance = latestCash.totalBalance + parseFloat(totalSaleAmount);
+                console.log(newTotalBalance);
+                await Cash.create({
+                    balance: parseFloat(totalSaleAmount),
+                    totalBalance: newTotalBalance,
+                    type: 'add'
+                });
+            }
+        }
         await History.create({
             user: req.user._id,
             action: 'ADD_SALE',
