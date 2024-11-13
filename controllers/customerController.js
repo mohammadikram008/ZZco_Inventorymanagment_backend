@@ -16,50 +16,15 @@ const generateToken = (id) => {
 
 // Register Customer
 const registerCustomer = asyncHandler(async (req, res) => {
-  const { username, email, password, phone } = req.body;
+  const { email, ...rest } = req.body; // Extract email from the request body
+  const Customer = new CustomerUser(rest); // Create a new CustomerUser without email
+  console.log("Customer", Customer);
+  try {
+    const newCustomer = await Customer.save();
 
-  // Validation
-  if (!username) {
-    res.status(400);
-    throw new Error("Please fill in all required fields");
-  }
-  // if (password.length < 6) {
-  //   res.status(400);
-  //   throw new Error("Password must be at least 6 characters");
-  // }
-
-  // Check if user email already exists
-  const userExists = await CustomerUser.findOne({ email });
-  if (userExists) {
-    res.status(400);
-    throw new Error("Email has already been registered");
-  }
-
-  // Hash password
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  // Create new user
-  const customer = await CustomerUser.create({
-    username,
-    email,
-    password: password,
-    phone, 
-  });
-
-  // Generate Token
-  const token = generateToken(customer._id);
-
-  if (customer) {
-    res.status(201).json({
-      _id: customer._id,
-      username: customer.username,
-      email: customer.email,
-      phone: customer.phone,
-      token,
-    });
-  } else {
-    res.status(400);
-    throw new Error("Invalid Customer data");
+    res.status(201).json(newCustomer);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 });
 

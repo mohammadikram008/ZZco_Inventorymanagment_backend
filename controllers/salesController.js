@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Sale = require("../models/Sale");
 const CustomerUser = require("../models/customer");
+const Product = require("../models/productModel");
 
 const Bank = require('../models/Bank');
 const Cash = require('../models/Cash');
@@ -19,19 +20,21 @@ cloudinary.config({
 const AddSale = asyncHandler(async (req, res) => {
     // Extract sale details from request body
     const { productID, customerID, stockSold, saleDate, totalSaleAmount, paymentMethod, chequeDate, bankID, warehouseID, status } = req.body;
-console.log("BOdy",req.body);
     // Validation
     if (!productID || !customerID || !stockSold || !saleDate || !totalSaleAmount || !paymentMethod) {
         res.status(400);
         throw new Error("Please fill in all fields");
     }
-
+    const product = await Product.findById(productID); // Assuming you have a Product model
+    if (!product || product.quantity < stockSold) {
+        return res.status(400).json({ message: "Out of stock or limit exceeded" });
+    }
     // Handle Image upload
     let fileData = {};
     if (req.file) {
         fileData = {
             fileName: req.file.filename,
-            filePath: req.file.path.replace(/\\/g, "/"), 
+            filePath: req.file.path.replace(/\\/g, "/"),
             fileType: req.file.mimetype,
             fileSize: req.file.size,
         };
@@ -55,23 +58,23 @@ console.log("BOdy",req.body);
         await sale.save();
         const totalAmount = stockSold * totalSaleAmount;
 
-       
+
         const customer = await CustomerUser.findById(customerID);
         if (!customer) {
-          return res.status(404).json({ message: "Customer not found" });
+            return res.status(404).json({ message: "Customer not found" });
         }
-      
+
         const transaction = {
-          amount: parseFloat(totalSaleAmount),
-          paymentMethod: paymentMethod.toLowerCase(),
-          date: new Date(saleDate),
-          type: "credit", // Mark as credit for sale
-          description: "Sale transaction",
+            amount: parseFloat(totalSaleAmount),
+            paymentMethod: paymentMethod.toLowerCase(),
+            date: new Date(saleDate),
+            type: "credit", // Mark as credit for sale
+            description: "Sale transaction",
         };
-      
+
         // Update the customer balance (credit amount)
         customer.balance += parseFloat(totalSaleAmount);
-        console.log("transecton",transaction);
+        console.log("transecton", transaction);
         customer.transactionHistory.push(transaction);
         await customer.save();
         if (paymentMethod === 'online' || paymentMethod === 'cheque') {
