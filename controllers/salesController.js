@@ -21,6 +21,8 @@ const AddSale = asyncHandler(async (req, res) => {
     // Extract sale details from request body
     const { productID, customerID, stockSold, saleDate, totalSaleAmount, paymentMethod, chequeDate, bankID, warehouseID, status } = req.body;
     // Validation
+    console.log("reqbpdySale",  req.body);
+
     if (!productID || !customerID || !stockSold || !saleDate || !totalSaleAmount || !paymentMethod) {
         res.status(400);
         throw new Error("Please fill in all fields");
@@ -29,6 +31,8 @@ const AddSale = asyncHandler(async (req, res) => {
     if (!product || product.quantity < stockSold) {
         return res.status(400).json({ message: "Out of stock or limit exceeded" });
     }
+    product.quantity -= stockSold; // Decrease the product quantity
+    await product.save();
     // Handle Image upload
     let fileData = {};
     if (req.file) {
@@ -65,6 +69,7 @@ const AddSale = asyncHandler(async (req, res) => {
         }
 
         const transaction = {
+            productName: product.name, // Add product name to transaction
             amount: parseFloat(totalSaleAmount),
             paymentMethod: paymentMethod.toLowerCase(),
             date: new Date(saleDate),
@@ -74,7 +79,6 @@ const AddSale = asyncHandler(async (req, res) => {
 
         // Update the customer balance (credit amount)
         customer.balance += parseFloat(totalSaleAmount);
-        console.log("transecton", transaction);
         customer.transactionHistory.push(transaction);
         await customer.save();
         if (paymentMethod === 'online' || paymentMethod === 'cheque') {
@@ -121,7 +125,7 @@ const AddSale = asyncHandler(async (req, res) => {
         res.status(201).json({ message: 'Sale added successfully!', sale });
     } catch (error) {
         console.error('Error adding sale:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
+        res.status(500).json({ message: `Internal Server Error,${error}` });
     }
 });
 

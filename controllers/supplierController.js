@@ -30,14 +30,14 @@ exports.addTransaction = async (req, res) => {
     if (!supplier) {
       return res.status(404).json({ message: "Supplier not found" });
     }
-    const { amount, paymentMethod, chequeDate, description, bankId, type = 'credit' } = req.body;
-    console.log("NEWWWWW",req.body);
+    const {name, amount, paymentMethod, chequeDate, description, bankId, type = 'credit' } = req.body;
 
     if (!paymentMethod) {
       return res.status(400).json({ message: "Payment method is required" });
     }
 
     const transaction = {
+      productName: name, 
       amount: parseFloat(amount),
       paymentMethod: paymentMethod.toLowerCase(),
       chequeDate,

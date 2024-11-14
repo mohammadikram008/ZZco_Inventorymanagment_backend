@@ -6,13 +6,17 @@ const capitalizeFirstLetter = (string) => {
 
 // Transaction schema remains the same
 const transactionSchema = new mongoose.Schema({
+  productName:{
+    type: String,
+
+  },
   amount: {
     type: Number,
     required: true,
   },
   paymentMethod: {
     type: String,
-    enum: ['Cash', 'Online', 'Cheque'],  // Capitalized enum values
+    enum: ['Cash', 'Online', 'Cheque','Credit'],  // Capitalized enum values
     required: true,
     set: capitalizeFirstLetter,  // Ensure the value is capitalized
   },

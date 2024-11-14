@@ -52,7 +52,7 @@ const productSchema = mongoose.Schema(
     paymentMethod: {
       type: String,
       required: [true, "Please select a payment method"],
-      enum: ["cash", "cheque", "online"],
+      enum: ["cash", "cheque", "online","Credit"],
     },
     chequeDate: {
       type: Date,
