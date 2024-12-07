@@ -81,7 +81,7 @@ const AddSale = asyncHandler(async (req, res) => {
         customer.balance += parseFloat(totalSaleAmount);
         customer.transactionHistory.push(transaction);
         await customer.save();
-        if (paymentMethod === 'online' || paymentMethod === 'cheque') {
+        if (paymentMethod === 'online') {
             if (!bankID) {
                 throw new Error('Bank ID is required for online payments');
             }
@@ -90,6 +90,11 @@ const AddSale = asyncHandler(async (req, res) => {
                 throw new Error('Bank not found');
             }
             bank.balance += parseFloat(totalSaleAmount);
+            bank.transactions.push({
+                amount: totalSaleAmount,
+                type: 'Add', // Indicate that this is a deduction
+              });
+              await bank.save()
             await bank.save();
         } else if (paymentMethod === 'cash') {
             const latestCash = await Cash.findOne().sort({ createdAt: -1 });

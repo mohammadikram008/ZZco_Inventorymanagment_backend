@@ -80,7 +80,7 @@ const createProduct = asyncHandler(async (req, res) => {
     image: fileData, // Optional image field
     paymentMethod,
     chequeDate: paymentMethod === "cheque" ? chequeDate : undefined, // Include only if payment method is cheque
-    bank: paymentMethod === "online" ? bank : undefined, // Include only if payment method is online
+    bank: paymentMethod === "online" || paymentMethod === "cheque" ? bank : undefined, // Save bank for both online and cheque payments
     warehouse: shippingType === "local" ? warehouse : undefined, // Include warehouse if shipping type is local
     shippingType,
     supplier, // Add the supplier to the product
@@ -93,15 +93,19 @@ const createProduct = asyncHandler(async (req, res) => {
   let balance = 0;
 
   // Handle payment method (deducting balances)
-  if (paymentMethod === 'online' || paymentMethod === 'cheque') {
+  if (paymentMethod === 'online') {
     const bankAccount = await Bank.findById(bank);
     if (!bankAccount || bankAccount.balance < totalAmount) {
       throw new Error('Insufficient funds in the bank account.');
     }
     bankAccount.balance -= totalAmount;
     balance = bankAccount.balance;
-    await bankAccount.save();
-  } else if (paymentMethod === 'cash') {
+    bankAccount.transactions.push({
+      amount: totalAmount,
+      type: 'deduct', // Indicate that this is a deduction
+    });
+    await bankAccount.save()  } 
+    else if (paymentMethod === 'cash') {
     const latestCash = await Cash.findOne().sort({ createdAt: -1 });
     if (!latestCash || latestCash.totalBalance < totalAmount) {
       throw new Error('Insufficient cash.');

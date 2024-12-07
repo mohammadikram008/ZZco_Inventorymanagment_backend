@@ -2,6 +2,7 @@
 
 const asyncHandler = require("express-async-handler");
 const Bank = require("../models/Bank"); // Correctly import the Bank model
+const Transaction = require("../models/Transaction"); // Import the Transaction model
 
 // Add a new bank
 const addBank = asyncHandler(async (req, res) => {
@@ -17,7 +18,15 @@ const addBank = asyncHandler(async (req, res) => {
   const bank = await Bank.create({
     bankName,
     balance:amount,
+    transactions: [{ amount, type: 'add' }], // Add transaction to the bank's history
+
   });  
+ // Create a transaction entry
+//  await Transaction.create({
+//   bankId: bank._id,
+//   amount,
+//   type: 'add',
+// });
 
   if (bank) {
     res.status(201).json(bank);
@@ -63,7 +72,11 @@ const updateBank = asyncHandler(async (req, res) => {
   if (bank) {
     bank.bankName = bankName || bank.bankName;
     bank.balance = amount !== undefined ? amount : bank.balance;
-
+  // Push a new transaction into the bank's transactions array
+  bank.transactions.push({
+    amount: amount !== undefined ? amount - bank.balance : 0, // Record the change in balance
+    type: 'update', // This indicates the type of transaction
+  });
     const updatedBank = await bank.save();
     res.status(200).json(updatedBank);
   } else {
@@ -72,11 +85,23 @@ const updateBank = asyncHandler(async (req, res) => {
   }
 });
 
+const getTransactionHistory = asyncHandler(async (req, res) => {
+  const bankId = req.params.id;
 
+  const transactions = await Transaction.find({ bankId }).populate('bankId');
+
+  if (transactions) {
+    res.status(200).json(transactions);
+  } else {
+    res.status(404);
+    throw new Error("No transactions found for this bank");
+  }
+});
 module.exports = {
   addBank,
   getAllBanks,
   deleteBank,
   updateBank,
+  getTransactionHistory
 };
 
