@@ -88,20 +88,54 @@ const updateBank = asyncHandler(async (req, res) => {
 const getTransactionHistory = asyncHandler(async (req, res) => {
   const bankId = req.params.id;
 
-  const transactions = await Transaction.find({ bankId }).populate('bankId');
+  const transactions = await Transaction.find({ bankId }).sort({ createdAt: -1 });
 
   if (transactions) {
     res.status(200).json(transactions);
   } else {
-    res.status(404);
-    throw new Error("No transactions found for this bank");
+    res.status(404).json({ message: "No transactions found for this bank" });
   }
 });
+
+
+const addBankTransaction = asyncHandler(async (req, res) => {
+  const bankId = req.params.id;
+  const { amount, type, description } = req.body;
+
+  const bank = await Bank.findById(bankId);
+  if (!bank) {
+    res.status(404);
+    throw new Error("Bank not found");
+  }
+
+  const adjustedAmount = type === "add" ? amount : -Math.abs(amount);
+  bank.balance += adjustedAmount;
+
+  bank.transactions.push({
+    amount,
+    type,
+    description,
+  });
+
+  // Optional: Save to Transaction model too
+  await Transaction.create({
+    bankId,
+    amount,
+    type,
+    description,
+  });
+
+  await bank.save();
+  res.status(200).json({ message: "Transaction recorded", bank });
+});
+
+
 module.exports = {
   addBank,
   getAllBanks,
   deleteBank,
   updateBank,
-  getTransactionHistory
+  getTransactionHistory,
+  addBankTransaction,
 };
 

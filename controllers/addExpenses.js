@@ -1,30 +1,44 @@
 const asyncHandler = require("express-async-handler");
 const Expense = require("../models/addExpensesModel");
 
-// Add a new expense
 const addExpense = asyncHandler(async (req, res) => {
-  const { expenseName, amount, description } = req.body;
+  console.log("🔍 Incoming Expense Data:", req.body); // ✅ Debugging log
 
-  // Validation
-  if (!expenseName || amount === undefined || !description) {
-    res.status(400);
-    throw new Error("Please provide expense name, amount, and description");
+  const { expenseName, amount, description, paymentMethod, bankID, chequeDate } = req.body;
+
+  if (!expenseName || !amount || !description) {
+      return res.status(400).json({ message: "Please provide valid expense name, amount, and description" });
   }
 
-  // Create a new expense entry
+  let fileData = {};
+  if (req.file) {
+      fileData = {
+          fileName: req.file.filename,
+          filePath: req.file.path.replace(/\\/g, "/"),
+          fileType: req.file.mimetype,
+          fileSize: req.file.size,
+      };
+  }
+
+  // 🚨 Ensure `amount` is stored as negative
   const expense = await Expense.create({
-    expenseName,
-    amount,
-    description,
+      expenseName: expenseName.trim(),
+      amount: -Math.abs(parseFloat(amount)), // ✅ Always store expenses as negative
+      description: description.trim(),
+      paymentMethod: paymentMethod || "cash", // ✅ Ensure payment method is stored
+      chequeDate: chequeDate || null,
+      bankID: bankID || null,
+      image: fileData,
   });
 
-  if (expense) {
-    res.status(201).json(expense);
-  } else {
-    res.status(400);
-    throw new Error("Invalid expense data");
-  }
+  console.log("✅ Expense Created:", expense); // ✅ Debugging log
+  res.status(201).json(expense);
 });
+
+
+
+
+
 
 // Get all expenses
 const getAllExpenses = asyncHandler(async (req, res) => {

@@ -45,6 +45,11 @@ const productSchema = mongoose.Schema(
       required: [true, "Please add a price"],
       trim: true,
     },
+
+    description:{
+      type: String, 
+      required: true 
+    },
     image: {
       type: Object,
       default: {},

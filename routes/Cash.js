@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { addCash, getAllCash, getCurrentTotalBalance, updateCash, deleteCash } = require("../controllers/CashController");
+const { addCash, getAllCash, getCurrentTotalBalance, updateCash, deleteCash,getCashTransactionHistory } = require("../controllers/CashController");
 const protect = require("../middleWare/authMiddleware"); // As per your specified path
 const checkPrivileges = require("../middleWare/checkPrivileges"); // As per your specified path
 
@@ -15,5 +15,9 @@ router.put("/update/:id", protect, updateCash);
 
 // Route to delete a cash entry by ID (requires authentication and delete privilege)
 router.delete("/delete/:id", protect, checkPrivileges("deleteCash"), deleteCash);
+
+
+router.get('/:id/transactions', protect, getCashTransactionHistory);
+
 
 module.exports = router;

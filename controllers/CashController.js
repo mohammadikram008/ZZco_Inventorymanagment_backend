@@ -2,39 +2,54 @@
 
 const asyncHandler = require("express-async-handler");
 const Cash = require("../models/Cash"); // Correctly import the Bank model
+const CashTransaction = require("../models/cashTransactionModel"); // ✅ Import it
+
+ 
+
+const getCashTransactionHistory = asyncHandler(async (req, res) => {
+  const cashEntryId = req.params.id;
+
+  const transactions = await CashTransaction.find({ cashEntryId }).sort({ createdAt: -1 });
+
+  if (transactions.length > 0) {
+    res.status(200).json(transactions);
+  } else {
+    res.status(404).json({ message: "No transactions found for this cash entry" });
+  }
+});
 
 // Add a new bank
 const addCash = asyncHandler(async (req, res) => {
   const { balance, type } = req.body;
 
-  // Validation for type and balance
   if (balance === undefined || (type !== 'add' && type !== 'deduct')) {
     return res.status(400).json({ message: "Please provide both balance and a valid type ('add' or 'deduct')" });
   }
 
   const latestCash = await Cash.findOne().sort({ createdAt: -1 });
-  let currentTotalBalance = 0;
-  
-  if (latestCash && latestCash.totalBalance !== undefined) {
-    currentTotalBalance = latestCash.totalBalance;
-  }
+  let currentTotalBalance = latestCash?.totalBalance || 0;
 
   const numericBalance = Number(balance);
   if (isNaN(numericBalance)) {
     throw new Error("Balance must be a valid number");
   }
 
-  let newTotalBalance;
-  if (type === 'add') {
-    newTotalBalance = currentTotalBalance + numericBalance;
-  } else if (type === 'deduct') {
-    newTotalBalance = currentTotalBalance - numericBalance;
-  }
+  let newTotalBalance = type === 'add'
+    ? currentTotalBalance + numericBalance
+    : currentTotalBalance - numericBalance;
 
   const cash = await Cash.create({
     balance: numericBalance,
     totalBalance: newTotalBalance,
     type,
+  });
+
+  // ✅ Log the transaction
+  await CashTransaction.create({
+    cashEntryId: cash._id,
+    amount: numericBalance,
+    type,
+    description: `Manual ${type === 'add' ? 'Addition' : 'Deduction'} of Cash`,
   });
 
   if (cash) {
@@ -43,6 +58,7 @@ const addCash = asyncHandler(async (req, res) => {
     res.status(400).json({ message: "Error creating cash entry" });
   }
 });
+
 
 
 
@@ -81,42 +97,48 @@ const getCurrentTotalBalance = asyncHandler(async (req, res) => {
 const updateCash = asyncHandler(async (req, res) => {
   const { balance, type } = req.body;
 
-  console.log("Received balance:", balance); // Log balance for debugging
-  console.log("Received type:", type);       // Log type for debugging
-
   if (balance === undefined || (type !== 'add' && type !== 'deduct')) {
     res.status(400);
     throw new Error("Please provide both balance and a valid type (add/deduct)");
   }
 
-  // Find the cash entry by ID
   const cash = await Cash.findById(req.params.id);
-
   if (!cash) {
     res.status(404);
     throw new Error("Cash entry not found");
   }
 
-  // Check if balance update is possible based on type
+  const numericBalance = Math.abs(Number(balance));
+  if (isNaN(numericBalance)) {
+    res.status(400);
+    throw new Error("Invalid balance value");
+  }
+
+  // Update balance
   if (type === "deduct") {
-    // Ensure the deduction does not take the balance below zero
-    if (cash.balance < Math.abs(balance)) {
+    if (cash.balance < numericBalance) {
       res.status(400);
       throw new Error("Insufficient balance for deduction");
     }
-    // Deduct the balance
-    cash.balance -= Math.abs(balance);
+    cash.balance -= numericBalance;
   } else if (type === "add") {
-    // Add the balance for "add" type
-    cash.balance += Math.abs(balance);
+    cash.balance += numericBalance;
   }
 
   cash.type = type;
-
   await cash.save();
+
+  // ✅ Log transaction after save
+  await CashTransaction.create({
+    cashEntryId: cash._id,
+    amount: numericBalance,
+    type,
+    description: `Cash ${type === 'add' ? 'Increment' : 'Decrement'} via Edit`,
+  });
 
   res.status(200).json({ message: "Cash entry updated successfully", cash });
 });
+
 
 
 
@@ -160,5 +182,6 @@ module.exports = {
   getCurrentTotalBalance,
   updateCash,
   deleteCash,
+  getCashTransactionHistory
 };
 

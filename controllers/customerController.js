@@ -16,8 +16,8 @@ const generateToken = (id) => {
 
 // Register Customer
 const registerCustomer = asyncHandler(async (req, res) => {
-  const { email, ...rest } = req.body; // Extract email from the request body
-  const Customer = new CustomerUser(rest); // Create a new CustomerUser without email
+  const {...rest } = req.body; 
+  const Customer = new CustomerUser(rest);  
   console.log("Customer", Customer);
   try {
     const newCustomer = await Customer.save();

@@ -15,11 +15,11 @@ cloudinary.config({
 
 const createProduct = asyncHandler(async (req, res) => {
    
-
-  const { name, category, quantity, price, paymentMethod, chequeDate, bank, warehouse, shippingType, supplier, status } = req.body;
+ 
+  const { name, category, quantity, price,image, description, paymentMethod, chequeDate, bank, warehouse, shippingType, supplier, status } = req.body;
 
   // Ensure the required fields are filled
-  if (!name || !category || !quantity || !price || !paymentMethod || !shippingType || !supplier) {
+  if (!name || !category || !quantity || !price ||!description|| !paymentMethod || !shippingType || !supplier) {
     res.status(400);
     throw new Error("Please fill in all required fields, including supplier.");
   }
@@ -77,6 +77,7 @@ const createProduct = asyncHandler(async (req, res) => {
     category,
     quantity: initialQuantity,
     price: parseFloat(price), // Ensure price is stored as a number
+    description,
     image: fileData, // Optional image field
     paymentMethod,
     chequeDate: paymentMethod === "cheque" ? chequeDate : undefined, // Include only if payment method is cheque

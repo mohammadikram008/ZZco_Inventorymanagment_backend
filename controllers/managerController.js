@@ -5,21 +5,18 @@ const bcrypt = require("bcryptjs");
 
 // Register Manager
 const registerManager = asyncHandler(async (req, res) => {
-    const { username, email, password, phone, privileges } = req.body;
+    const { username,  phone, privileges } = req.body;
   
-    if (!username || !email || !password) {
+    if (!username   ) {
       res.status(400);
       throw new Error("Please fill in all required fields");
     }
   
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+  
   
     const manager = await Manager.create({
       username,
-      email,
-      password: hashedPassword,
+      
       phone,
       privileges: {
         deleteCustomer: privileges.deleteCustomer || false,
